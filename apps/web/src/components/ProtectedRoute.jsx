@@ -1,11 +1,17 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 
 const ProtectedRoute = ({ children, sponsorOnly = false, adminOnly = false }) => {
   const { user, profile, loading } = useAuth();
+  const [timedOut, setTimedOut] = useState(false);
 
-  if (loading) {
+  useEffect(() => {
+    const t = setTimeout(() => setTimedOut(true), 4000);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (loading && !timedOut) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -17,7 +23,6 @@ const ProtectedRoute = ({ children, sponsorOnly = false, adminOnly = false }) =>
   }
 
   if (!user) return <Navigate to="/login" replace />;
-
   if (adminOnly && profile?.role !== 'admin') return <Navigate to="/dashboard" replace />;
   if (sponsorOnly && !['patrocinador', 'admin'].includes(profile?.role)) return <Navigate to="/dashboard" replace />;
 
