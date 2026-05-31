@@ -93,6 +93,9 @@ const HomePage = () => {
                 <Button size="lg" onClick={openWhatsApp} className="text-base h-14 px-8 rounded-full btn-secondary w-full sm:w-auto">
                   <MessageCircle className="w-5 h-5 mr-2" />{hero.btn_secondary}
                 </Button>
+                <Button size="lg" asChild className="text-base h-14 px-8 rounded-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold w-full sm:w-auto">
+                  <a href="/registro">🎓 Únete ahora</a>
+                </Button>
               </motion.div>
             </motion.div>
           </div>
@@ -218,6 +221,9 @@ const HomePage = () => {
               <div className="flex flex-col sm:flex-row justify-center gap-4">
                 <Button size="lg" onClick={() => setIsModalOpen(true)} className="text-base h-14 px-8 rounded-full btn-primary">
                   Solicitar Información
+                </Button>
+                <Button size="lg" asChild className="text-base h-14 px-8 rounded-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold">
+                  <a href="/registro">🎓 Únete ahora</a>
                 </Button>
                 <Button size="lg" variant="outline" onClick={openWhatsApp} className="text-base h-14 px-8 rounded-full bg-transparent border-white text-white hover:bg-white/10">
                   <MessageCircle className="w-5 h-5 mr-2" />Escríbenos por WhatsApp
