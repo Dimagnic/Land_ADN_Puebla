@@ -46,7 +46,6 @@ export const AuthProvider = ({ children }) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
     if (data.user) {
-      await new Promise(r => setTimeout(r, 300));
       const prof = await loadProfile(data.user.id);
       return { user: data.user, profile: prof };
     }
