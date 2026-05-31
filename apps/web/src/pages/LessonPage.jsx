@@ -1,203 +1,201 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext.jsx';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Helmet } from 'react-helmet';
+import { ArrowLeft, ArrowRight, CheckCircle2, BookOpen } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext.jsx';
+import { supabase, markLessonComplete, getUserProgress } from '@/lib/supabaseClient.js';
 import { toast } from 'sonner';
-import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
-import { modulesData } from '@/components/LessonContent.jsx';
+
+const QUIZ_QUESTIONS = [
+  { q: '¿Cuál es el objetivo principal de esta lección?', options: ['Comprender el tema en profundidad', 'Memorizar datos sin contexto', 'Ignorar los conceptos clave', 'Evitar aplicar lo aprendido'], correct: 0 },
+  { q: '¿Qué actitud es fundamental para el crecimiento financiero?', options: ['Indiferencia ante el dinero', 'Mentalidad de abundancia y aprendizaje continuo', 'Gastar sin planificación', 'Depender de otros para decidir'], correct: 1 },
+  { q: '¿Qué debes hacer con lo aprendido en esta lección?', options: ['Olvidarlo después del módulo', 'Aplicarlo en tu vida diaria', 'Guardarlo sin compartir', 'Esperar instrucciones adicionales'], correct: 1 },
+];
 
 const LessonPage = () => {
   const { moduleId, lessonId } = useParams();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const { updateLastLesson } = useAuth();
-  const [module, setModule] = useState(null);
   const [lesson, setLesson] = useState(null);
-  const [completed, setCompleted] = useState(false);
-  const [lessonIndex, setLessonIndex] = useState(0);
+  const [module, setModule] = useState(null);
+  const [allLessons, setAllLessons] = useState([]);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [quizAnswers, setQuizAnswers] = useState({});
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const [quizPassed, setQuizPassed] = useState(false);
 
   useEffect(() => {
-    const foundModule = modulesData.find((m) => m.id === parseInt(moduleId));
-    if (!foundModule) {
-      navigate('/modules');
-      return;
+    if (!user) return;
+    async function load() {
+      const { data: mod } = await supabase
+        .from('modules').select('*, lessons(*)').eq('id', moduleId).single();
+      if (mod) {
+        setModule(mod);
+        const sorted = (mod.lessons || []).sort((a, b) => a.order_num - b.order_num);
+        setAllLessons(sorted);
+        const les = sorted.find(l => l.id === lessonId);
+        setLesson(les || null);
+      }
+      const progress = await getUserProgress(user.id);
+      setIsCompleted(progress.some(p => p.lesson_id === lessonId && p.completed));
+      setLoading(false);
     }
+    load();
+  }, [user, moduleId, lessonId]);
 
-    const foundLesson = foundModule.lessons.find((l) => l.id === parseInt(lessonId));
-    if (!foundLesson) {
-      navigate(`/module/${moduleId}`);
-      return;
-    }
-
-    setModule(foundModule);
-    setLesson(foundLesson);
-    setLessonIndex(foundModule.lessons.findIndex((l) => l.id === parseInt(lessonId)));
-
-    const progress = JSON.parse(localStorage.getItem('adnPueblaProgress') || '{}');
-    const moduleProgress = progress[foundModule.id] || {};
-    setCompleted(moduleProgress[foundLesson.id] === true);
-
-    updateLastLesson(foundModule.id, foundLesson.id);
-  }, [moduleId, lessonId]);
-
-  const handleComplete = (checked) => {
-    const progress = JSON.parse(localStorage.getItem('adnPueblaProgress') || '{}');
-    if (!progress[module.id]) {
-      progress[module.id] = {};
-    }
-    progress[module.id][lesson.id] = checked;
-    localStorage.setItem('adnPueblaProgress', JSON.stringify(progress));
-    setCompleted(checked);
-
-    if (checked) {
-      toast.success('Estás un paso más cerca de tu libertad financiera');
-    }
+  const handleComplete = async () => {
+    await markLessonComplete(user.id, lessonId);
+    setIsCompleted(true);
+    setShowQuiz(true);
+    toast.success('¡Lección completada!');
   };
 
-  const goToNextLesson = () => {
-    if (lessonIndex < module.lessons.length - 1) {
-      const nextLesson = module.lessons[lessonIndex + 1];
-      navigate(`/lesson/${module.id}/${nextLesson.id}`);
-    } else {
-      navigate(`/evaluation/${module.id}`);
-    }
+  const handleQuizSubmit = () => {
+    const correct = QUIZ_QUESTIONS.filter((q, i) => quizAnswers[i] === q.correct).length;
+    const passed = correct >= 2;
+    setQuizPassed(passed);
+    setQuizSubmitted(true);
+    if (passed) toast.success(`¡Mini-examen aprobado! ${correct}/${QUIZ_QUESTIONS.length} correctas`);
+    else toast.error(`${correct}/${QUIZ_QUESTIONS.length} correctas. ¡Inténtalo de nuevo!`);
   };
 
-  const goToPreviousLesson = () => {
-    if (lessonIndex > 0) {
-      const prevLesson = module.lessons[lessonIndex - 1];
-      navigate(`/lesson/${module.id}/${prevLesson.id}`);
-    }
-  };
+  const currentIdx = allLessons.findIndex(l => l.id === lessonId);
+  const nextLesson = allLessons[currentIdx + 1];
+  const prevLesson = allLessons[currentIdx - 1];
 
-  if (!module || !lesson) return null;
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+    </div>
+  );
 
-  const progressPercentage = Math.round(((lessonIndex + 1) / module.lessons.length) * 100);
-  const isLastLesson = lessonIndex === module.lessons.length - 1;
+  if (!lesson) return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <p className="text-muted-foreground">Lección no encontrada</p>
+    </div>
+  );
+
+  const progress = allLessons.length > 0 ? Math.round(((currentIdx + 1) / allLessons.length) * 100) : 0;
 
   return (
     <>
-      <Helmet>
-        <title>{`${lesson.title} - Módulo ${module.id} | ADN Puebla`}</title>
-        <meta name="description" content={lesson.description} />
-      </Helmet>
-
+      <Helmet><title>{lesson.title} | ADN Puebla</title></Helmet>
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Button variant="ghost" asChild className="mb-6">
-            <Link to={`/module/${module.id}`}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Volver al módulo
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-4xl">
+          <div className="flex items-center justify-between mb-6">
+            <Link to={`/module/${moduleId}`} className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="w-4 h-4" /> Volver al módulo
             </Link>
-          </Button>
-
-          <div className="mb-6">
-            <Badge className="mb-3">
-              Módulo {module.id} - Lección {lesson.id}
-            </Badge>
-            <h1 className="text-3xl md:text-4xl font-bold mb-4" style={{letterSpacing: '-0.02em'}}>
-              {lesson.title}
-            </h1>
-            <div className="flex items-center space-x-4">
-              <Progress value={progressPercentage} className="flex-1 h-2" />
-              <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-                {lessonIndex + 1} de {module.lessons.length}
-              </span>
-            </div>
+            <span className="text-sm text-muted-foreground">Lección {currentIdx + 1} de {allLessons.length}</span>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="aspect-video bg-muted rounded-lg mb-6 flex items-center justify-center">
-                    <iframe
-                      width="100%"
-                      height="100%"
-                      src={lesson.videoUrl}
-                      title={lesson.title}
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      className="rounded-lg"
-                    ></iframe>
-                  </div>
-                  <p className="text-muted-foreground leading-relaxed">{lesson.description}</p>
-                </CardContent>
-              </Card>
+          <Progress value={progress} className="h-1.5 mb-6" />
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Contenido de la lección</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="leading-relaxed">{lesson.content}</p>
-                </CardContent>
-              </Card>
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <BookOpen className="w-5 h-5 text-primary" />
+              <span className="text-sm text-muted-foreground font-medium">{module?.title}</span>
             </div>
+            <h1 className="text-2xl md:text-3xl font-bold" style={{letterSpacing:'-0.02em'}}>{lesson.title}</h1>
+            {lesson.description && <p className="text-muted-foreground mt-2 leading-relaxed">{lesson.description}</p>}
+          </div>
 
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Progreso</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center space-x-3">
-                    <Checkbox
-                      id="completed"
-                      checked={completed}
-                      onCheckedChange={handleComplete}
-                    />
-                    <label
-                      htmlFor="completed"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                    >
-                      Marcar como completada
-                    </label>
-                  </div>
-                  {completed && (
-                    <div className="mt-4 p-3 bg-primary/10 rounded-lg flex items-start space-x-2">
-                      <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                      <p className="text-sm text-primary font-medium">
-                        ¡Excelente! Estás un paso más cerca de tu libertad financiera
-                      </p>
+          {lesson.video_url && (
+            <div className="relative aspect-video rounded-xl overflow-hidden bg-black mb-6 shadow-lg">
+              <iframe src={lesson.video_url} className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen title={lesson.title} />
+            </div>
+          )}
+
+          {lesson.content && (
+            <Card className="mb-6">
+              <CardContent className="p-6">
+                <h2 className="text-lg font-semibold mb-3">Material de la lección</h2>
+                <div className="prose prose-sm max-w-none text-foreground leading-relaxed whitespace-pre-wrap">
+                  {lesson.content}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {showQuiz && (
+            <Card className="mb-6 border-primary/50">
+              <CardContent className="p-6">
+                <h2 className="text-lg font-semibold mb-4 text-primary">Mini examen de la lección</h2>
+                {QUIZ_QUESTIONS.map((q, qi) => (
+                  <div key={qi} className="mb-5">
+                    <p className="font-medium mb-3">{qi + 1}. {q.q}</p>
+                    <div className="space-y-2">
+                      {q.options.map((opt, oi) => (
+                        <label key={oi} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          quizSubmitted
+                            ? oi === q.correct ? 'border-green-500 bg-green-50 dark:bg-green-950'
+                            : quizAnswers[qi] === oi ? 'border-red-500 bg-red-50 dark:bg-red-950'
+                            : 'border-border'
+                            : quizAnswers[qi] === oi ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+                        }`}>
+                          <input type="radio" name={`q${qi}`} disabled={quizSubmitted}
+                            checked={quizAnswers[qi] === oi}
+                            onChange={() => setQuizAnswers(p => ({...p, [qi]: oi}))}
+                            className="text-primary" />
+                          <span className="text-sm">{opt}</span>
+                        </label>
+                      ))}
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Navegación</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={goToPreviousLesson}
-                    disabled={lessonIndex === 0}
-                  >
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Lección anterior
+                  </div>
+                ))}
+                {!quizSubmitted ? (
+                  <Button onClick={handleQuizSubmit} disabled={Object.keys(quizAnswers).length < QUIZ_QUESTIONS.length} className="w-full">
+                    Enviar respuestas
                   </Button>
-                  {isLastLesson ? (
-                    <Button className="w-full justify-start" onClick={goToNextLesson}>
-                      Ir a evaluación del módulo
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  ) : (
-                    <Button className="w-full justify-start" onClick={goToNextLesson}>
-                      Siguiente lección
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                ) : (
+                  <div className={`p-4 rounded-lg text-center ${quizPassed ? 'bg-green-50 dark:bg-green-950 text-green-800 dark:text-green-200' : 'bg-red-50 dark:bg-red-950 text-red-800 dark:text-red-200'}`}>
+                    <p className="font-semibold text-lg">{quizPassed ? '¡Excelente!' : 'Sigue practicando'}</p>
+                    <p className="text-sm">{quizPassed ? '¡Continúa con la siguiente lección!' : 'Repasa el contenido e inténtalo de nuevo.'}</p>
+                    {!quizPassed && (
+                      <Button variant="outline" size="sm" className="mt-3" onClick={() => { setQuizAnswers({}); setQuizSubmitted(false); }}>
+                        Intentar de nuevo
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            {prevLesson && (
+              <Button variant="outline" asChild className="flex-1">
+                <Link to={`/lesson/${moduleId}/${prevLesson.id}`}>
+                  <ArrowLeft className="w-4 h-4 mr-2" /> Anterior
+                </Link>
+              </Button>
+            )}
+            {!isCompleted && (
+              <Button onClick={handleComplete} className="flex-1">
+                <CheckCircle2 className="w-4 h-4 mr-2" /> Marcar como completada
+              </Button>
+            )}
+            {isCompleted && nextLesson && (
+              <Button asChild className="flex-1">
+                <Link to={`/lesson/${moduleId}/${nextLesson.id}`}>
+                  Siguiente lección <ArrowRight className="w-4 h-4 ml-2" />
+                </Link>
+              </Button>
+            )}
+            {isCompleted && !nextLesson && (
+              <Button asChild className="flex-1" variant="outline">
+                <Link to={`/module/${moduleId}`}>
+                  <CheckCircle2 className="w-4 h-4 mr-2" /> Ver módulo completo
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
       </div>
