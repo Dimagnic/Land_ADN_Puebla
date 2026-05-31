@@ -7,63 +7,66 @@ import { Progress } from '@/components/ui/progress';
 import AnnouncementBoard from '@/components/AnnouncementBoard.jsx';
 import { Helmet } from 'react-helmet';
 import { BookOpen, CheckCircle2, Trophy, Flame, ArrowRight, MessageCircle, Award } from 'lucide-react';
-import { modulesData } from '@/components/LessonContent.jsx';
+import { getUserProgress, getUserEvaluations, getModules } from '@/lib/supabaseClient.js';
 
 const DashboardPage = () => {
-  const { user, getStreak } = useAuth();
+  const { user, profile, getStreak } = useAuth();
   const [stats, setStats] = useState({
     modulesCompleted: 0,
     lessonsViewed: 0,
     evaluationsPassed: 0,
     overallProgress: 0,
   });
-  const [lastLesson, setLastLesson] = useState(null);
+  const [modules, setModules] = useState([]);
   const [nextModule, setNextModule] = useState(null);
 
+  const nombreCompleto = profile?.nombre_completo || user?.email || 'Usuario';
+  const primerNombre = nombreCompleto.split(' ')[0];
+
   useEffect(() => {
-    const progress = JSON.parse(localStorage.getItem('adnPueblaProgress') || '{}');
-    const evaluations = JSON.parse(localStorage.getItem('adnPueblaEvaluations') || '[]');
+    if (!user) return;
 
-    let modulesCompleted = 0;
-    let lessonsViewed = 0;
-    let totalLessons = 0;
+    async function loadData() {
+      const [mods, progress, evals] = await Promise.all([
+        getModules(),
+        getUserProgress(user.id),
+        getUserEvaluations(user.id),
+      ]);
 
-    modulesData.forEach((module) => {
-      totalLessons += module.lessons.length;
-      const moduleProgress = progress[module.id] || {};
-      const completedLessons = Object.values(moduleProgress).filter(Boolean).length;
-      lessonsViewed += completedLessons;
-      
-      if (completedLessons === module.lessons.length) {
-        modulesCompleted++;
-      }
-    });
+      setModules(mods);
 
-    const evaluationsPassed = evaluations.filter((e) => e.passed).length;
-    const overallProgress = totalLessons > 0 ? Math.round((lessonsViewed / totalLessons) * 100) : 0;
+      const completedLessonIds = new Set(
+        progress.filter(p => p.completed).map(p => p.lesson_id)
+      );
 
-    setStats({
-      modulesCompleted,
-      lessonsViewed,
-      evaluationsPassed,
-      overallProgress,
-    });
+      let modulesCompleted = 0;
+      let totalLessons = 0;
 
-    if (user.lastLesson) {
-      const module = modulesData.find((m) => m.id === user.lastLesson.moduleId);
-      const lesson = module?.lessons.find((l) => l.id === user.lastLesson.lessonId);
-      if (module && lesson) {
-        setLastLesson({ module, lesson });
-      }
+      mods.forEach(mod => {
+        const lessons = mod.lessons || [];
+        totalLessons += lessons.length;
+        const completedInModule = lessons.filter(l => completedLessonIds.has(l.id)).length;
+        if (lessons.length > 0 && completedInModule === lessons.length) modulesCompleted++;
+      });
+
+      const evaluationsPassed = evals.filter(e => e.passed).length;
+      const overallProgress = totalLessons > 0 ? Math.round((completedLessonIds.size / totalLessons) * 100) : 0;
+
+      setStats({
+        modulesCompleted,
+        lessonsViewed: completedLessonIds.size,
+        evaluationsPassed,
+        overallProgress,
+      });
+
+      const firstIncomplete = mods.find(mod => {
+        const lessons = mod.lessons || [];
+        return lessons.some(l => !completedLessonIds.has(l.id));
+      });
+      setNextModule(firstIncomplete || mods[0]);
     }
 
-    const firstIncompleteModule = modulesData.find((module) => {
-      const moduleProgress = progress[module.id] || {};
-      const completedLessons = Object.values(moduleProgress).filter(Boolean).length;
-      return completedLessons < module.lessons.length;
-    });
-
-    setNextModule(firstIncompleteModule || modulesData[0]);
+    loadData();
   }, [user]);
 
   const motivationalMessages = [
@@ -78,26 +81,26 @@ const DashboardPage = () => {
   return (
     <>
       <Helmet>
-        <title>{`Dashboard - ${user.nombreCompleto} | ADN Puebla`}</title>
+        <title>{`Dashboard - ${primerNombre} | ADN Puebla`}</title>
         <meta name="description" content="Panel de control de tu capacitación en ADN Puebla" />
       </Helmet>
 
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          
+
           <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <img 
-                src="https://horizons-cdn.hostinger.com/1060bfed-4778-45d1-8346-df361739fa1c/cc2ce7bfd135fd33083b232d71ee36cb.png" 
-                alt="ADN Puebla Logo" 
+              <img
+                src="https://horizons-cdn.hostinger.com/1060bfed-4778-45d1-8346-df361739fa1c/cc2ce7bfd135fd33083b232d71ee36cb.png"
+                alt="ADN Puebla Logo"
                 className="w-[60px] md:w-[80px] object-contain mb-4"
               />
               <h1 className="text-3xl md:text-4xl font-bold mb-2" style={{letterSpacing: '-0.02em'}}>
-                Bienvenido, {user.nombreCompleto.split(' ')[0]}
+                Bienvenido, {primerNombre}
               </h1>
               <p className="text-muted-foreground text-lg">{randomMessage}</p>
             </div>
-            
+
             {stats.overallProgress >= 100 && (
               <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg">
                 <Link to="/certificate">
@@ -119,9 +122,8 @@ const DashboardPage = () => {
                     <span className="text-sm font-medium">Progreso total</span>
                     <span className="text-2xl font-bold text-primary">{stats.overallProgress}%</span>
                   </div>
-                  <Progress value={stats.overallProgress} className="h-3 progress-bar-animated" />
+                  <Progress value={stats.overallProgress} className="h-3" />
                 </div>
-
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
                   <div className="text-center p-4 bg-muted rounded-lg">
                     <BookOpen className="w-8 h-8 text-primary mx-auto mb-2" />
@@ -139,7 +141,7 @@ const DashboardPage = () => {
                     <p className="text-sm text-muted-foreground">Evaluaciones aprobadas</p>
                   </div>
                   <div className="text-center p-4 bg-muted rounded-lg">
-                    <Flame className="w-8 h-8 text-primary mx-auto mb-2 streak-flame" />
+                    <Flame className="w-8 h-8 text-primary mx-auto mb-2" />
                     <p className="text-2xl font-bold">{getStreak()}</p>
                     <p className="text-sm text-muted-foreground">Días activo</p>
                   </div>
@@ -149,24 +151,24 @@ const DashboardPage = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Tu patrocinador</CardTitle>
+                <CardTitle>Tu cuenta</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Nombre</p>
-                    <p className="font-semibold">{user.nombrePatrocinador}</p>
+                    <p className="font-semibold">{nombreCompleto}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Tu código</p>
-                    <p className="font-semibold">{user.codigoDistribuidor}</p>
+                    <p className="text-sm text-muted-foreground">Email</p>
+                    <p className="font-semibold text-sm">{user?.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Rol</p>
+                    <p className="font-semibold capitalize">{profile?.role || 'alumno'}</p>
                   </div>
                   <Button className="w-full" asChild>
-                    <a
-                      href={`https://wa.me/5212221234567?text=Hola ${user.nombrePatrocinador}, soy ${user.nombreCompleto}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
+                    <a href="https://wa.me/5212221234567" target="_blank" rel="noopener noreferrer">
                       <MessageCircle className="w-4 h-4 mr-2" />
                       Contactar por WhatsApp
                     </a>
@@ -177,31 +179,6 @@ const DashboardPage = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {lastLesson && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Continuar donde lo dejaste</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        Módulo {lastLesson.module.id} - Lección {lastLesson.lesson.id}
-                      </p>
-                      <p className="font-semibold text-lg">{lastLesson.lesson.title}</p>
-                      <p className="text-sm text-muted-foreground mt-1">{lastLesson.lesson.description}</p>
-                    </div>
-                    <Button asChild className="w-full">
-                      <Link to={`/lesson/${lastLesson.module.id}/${lastLesson.lesson.id}`}>
-                        Continuar lección
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
             {nextModule && (
               <Card>
                 <CardHeader>
@@ -210,10 +187,10 @@ const DashboardPage = () => {
                 <CardContent>
                   <div className="space-y-3">
                     <div>
-                      <p className="text-sm text-muted-foreground">Módulo {nextModule.id}</p>
+                      <p className="text-sm text-muted-foreground">Módulo {nextModule.order_num}</p>
                       <p className="font-semibold text-lg">{nextModule.title}</p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {nextModule.lessons.length} lecciones
+                        {(nextModule.lessons || []).length} lecciones
                       </p>
                     </div>
                     <Button asChild variant="outline" className="w-full">
@@ -226,10 +203,6 @@ const DashboardPage = () => {
                 </CardContent>
               </Card>
             )}
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <AnnouncementBoard />
 
             <Card>
               <CardHeader>
@@ -250,6 +223,8 @@ const DashboardPage = () => {
               </CardContent>
             </Card>
           </div>
+
+          <AnnouncementBoard />
         </div>
       </div>
     </>
