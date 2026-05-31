@@ -16,9 +16,9 @@ export const AuthProvider = ({ children }) => {
 
   async function loadProfile(userId) {
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('profiles').select('*').eq('id', userId).single();
-      if (data && !error) {
+      if (data) {
         setProfile(data);
         return data;
       }
@@ -27,16 +27,15 @@ export const AuthProvider = ({ children }) => {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Listen to auth changes FIRST before checking session
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null);
-      if (session?.user) loadProfile(session.user.id).finally(() => setLoading(false));
-      else setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) await loadProfile(session.user.id);
-      else setProfile(null);
+      if (session?.user) {
+        await loadProfile(session.user.id);
+      } else {
+        setProfile(null);
+      }
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -45,10 +44,6 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    if (data.user) {
-      const prof = await loadProfile(data.user.id);
-      return { user: data.user, profile: prof };
-    }
     return data;
   };
 
@@ -60,14 +55,12 @@ export const AuthProvider = ({ children }) => {
 
   const updateLastLesson = async (moduleId, lessonId) => {
     if (!user) return;
-    const key = `adnStreak_${user.id}`;
-    localStorage.setItem(key, JSON.stringify({ moduleId, lessonId }));
+    localStorage.setItem(`adnStreak_${user.id}`, JSON.stringify({ moduleId, lessonId }));
   };
 
   const getStreak = () => {
     if (!user) return 0;
-    const key = `adnStreak_count_${user.id}`;
-    return parseInt(localStorage.getItem(key) || '0');
+    return parseInt(localStorage.getItem(`adnStreak_count_${user.id}`) || '0');
   };
 
   const isAdmin   = profile?.role === 'admin';
