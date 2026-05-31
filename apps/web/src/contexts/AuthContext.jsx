@@ -15,10 +15,15 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   async function loadProfile(userId) {
-    const { data } = await supabase
-      .from('profiles').select('*').eq('id', userId).single();
-    if (data) setProfile(data);
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('profiles').select('*').eq('id', userId).single();
+      if (data && !error) {
+        setProfile(data);
+        return data;
+      }
+    } catch {}
+    return null;
   }
 
   useEffect(() => {
@@ -41,6 +46,7 @@ export const AuthProvider = ({ children }) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
     if (data.user) {
+      await new Promise(r => setTimeout(r, 300));
       const prof = await loadProfile(data.user.id);
       return { user: data.user, profile: prof };
     }
@@ -55,7 +61,6 @@ export const AuthProvider = ({ children }) => {
 
   const updateLastLesson = async (moduleId, lessonId) => {
     if (!user) return;
-    // stored locally for quick access, persisted via user_progress table
     const key = `adnStreak_${user.id}`;
     localStorage.setItem(key, JSON.stringify({ moduleId, lessonId }));
   };
@@ -66,8 +71,8 @@ export const AuthProvider = ({ children }) => {
     return parseInt(localStorage.getItem(key) || '0');
   };
 
-  const isAdmin     = profile?.role === 'admin';
-  const isSponsor   = profile?.role === 'patrocinador' || isAdmin;
+  const isAdmin   = profile?.role === 'admin';
+  const isSponsor = profile?.role === 'patrocinador' || isAdmin;
 
   return (
     <AuthContext.Provider value={{
@@ -80,7 +85,6 @@ export const AuthProvider = ({ children }) => {
       logout,
       updateLastLesson,
       getStreak,
-      // Legacy compat
       nombreCompleto: profile?.nombre_completo,
       codigoDistribuidor: profile?.codigo_distribuidor,
       nombrePatrocinador: profile?.nombre_patrocinador,
