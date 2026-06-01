@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 import { User, Award, Flame, TrendingUp, Trophy } from 'lucide-react';
 import { modulesData } from '@/components/LessonContent.jsx';
 

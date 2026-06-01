@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, Trophy, XCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { supabase, saveEvaluation } from '@/lib/supabaseClient.js';

@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, ArrowRight, CheckCircle2, BookOpen } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { supabase, markLessonComplete, getUserProgress } from '@/lib/supabaseClient.js';

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import AnnouncementBoard from '@/components/AnnouncementBoard.jsx';
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 import { Calendar, MapPin, Clock, Users } from 'lucide-react';
 
 const EventsPage = () => {

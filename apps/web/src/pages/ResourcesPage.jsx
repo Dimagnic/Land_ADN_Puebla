@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 import { Download, ExternalLink, FileText, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
 
 const ResourcesPage = () => {

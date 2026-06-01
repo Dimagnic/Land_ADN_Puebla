@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, CheckCircle2, PlayCircle, Lock, Trophy, FileText } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { supabase, getUserProgress, getUserEvaluations } from '@/lib/supabaseClient.js';

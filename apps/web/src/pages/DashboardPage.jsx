@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import AnnouncementBoard from '@/components/AnnouncementBoard.jsx';
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 import { BookOpen, CheckCircle2, Trophy, Flame, ArrowRight, MessageCircle, Award, Shield, LogOut, BookMarked, Calendar, Download, User } from 'lucide-react';
 import { getUserProgress, getUserEvaluations, getModules } from '@/lib/supabaseClient.js';
 

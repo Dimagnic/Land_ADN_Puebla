@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 import { Users, MessageCircle, AlertCircle, Trophy, TrendingUp } from 'lucide-react';
 
 const SponsorPanelPage = () => {
