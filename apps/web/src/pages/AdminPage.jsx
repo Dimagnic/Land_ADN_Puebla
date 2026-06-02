@@ -14,6 +14,7 @@ import {
   Plus, Trash2, Save, ExternalLink, RefreshCw, Eye
 } from 'lucide-react';
 
+const SUPABASE_FUNCTIONS_URL = 'https://riqlkzzqkkiytoonnysj.functions.supabase.co';
 const inputCls = 'w-full bg-background border rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary';
 
 function Field({ label, value, onChange, textarea, type = 'text', placeholder }) {
@@ -351,6 +352,7 @@ function ProspectsAdmin() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [roleModal, setRoleModal] = useState(null); // { prospect }
 
   const load = () => {
     supabase.from('prospects').select('*').order('created_at', { ascending: false })
@@ -358,40 +360,45 @@ function ProspectsAdmin() {
   };
   useEffect(() => { load(); }, []);
 
+  // ✅ FIX: Usar Edge Function invite-user en lugar de signUp
+  const convertirProspecto = async (prospect, role = 'alumno') => {
+    try {
+      toast.loading('Enviando invitación...');
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/invite-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          email: prospect.email,
+          nombre: prospect.nombre,
+          telefono: prospect.telefono,
+          role,
+          prospectId: prospect.id,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Error al invitar');
+      setItems(p => p.map(x => x.id === prospect.id ? { ...x, estado: 'convertido', user_id: result.userId } : x));
+      toast.dismiss();
+      toast.success(`✅ Invitación enviada a ${prospect.email}. Recibirá un correo para establecer su contraseña.`);
+    } catch (err) {
+      toast.dismiss();
+      toast.error('Error: ' + err.message);
+    }
+    setRoleModal(null);
+  };
+
   const updateEstado = async (id, estado) => {
     const prospect = items.find(x => x.id === id);
     if (!prospect) return;
 
+    // Si se marca como convertido y no tiene usuario, mostrar modal de rol
     if (estado === 'convertido' && !prospect.user_id) {
-      try {
-        toast.loading('Creando cuenta de usuario...');
-        // Generate a secure random temporary password
-        const tempPassword = crypto.randomUUID().replace(/-/g, '').slice(0, 16) + 'Aa1!';
-        const { data: signupData, error: signupError } = await supabase.auth.signUp({
-          email: prospect.email,
-          password: tempPassword,
-        });
-        if (signupError) throw signupError;
-        const userId = signupData.user?.id;
-        if (userId) {
-          await supabase.from('profiles').upsert({
-            id: userId,
-            nombre_completo: prospect.nombre,
-            telefono: prospect.telefono,
-            role: 'alumno',
-            status: 'activo',
-          });
-          await supabase.from('prospects').update({ estado: 'convertido', user_id: userId }).eq('id', id);
-          setItems(p => p.map(x => x.id === id ? { ...x, estado: 'convertido', user_id: userId } : x));
-          toast.dismiss();
-          toast.success(`Usuario creado: ${prospect.email}. Se enviará email de confirmación para que establezca su contraseña.`);
-          return;
-        }
-      } catch (err) {
-        toast.dismiss();
-        toast.error('Error al crear usuario: ' + err.message);
-        return;
-      }
+      setRoleModal({ prospect });
+      return;
     }
 
     await supabase.from('prospects').update({ estado }).eq('id', id);
@@ -409,6 +416,28 @@ function ProspectsAdmin() {
 
   return (
     <div>
+      {/* ✅ Modal para seleccionar rol antes de invitar */}
+      {roleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-background rounded-xl shadow-xl p-6 w-full max-w-sm">
+            <h2 className="text-lg font-bold mb-1">Convertir a usuario</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Se enviará una invitación a <strong>{roleModal.prospect.email}</strong>.<br />
+              Selecciona el rol que tendrá en la plataforma:
+            </p>
+            <div className="flex flex-col gap-2 mb-4">
+              {['alumno', 'patrocinador', 'admin'].map(r => (
+                <button key={r} onClick={() => convertirProspecto(roleModal.prospect, r)}
+                  className="w-full px-4 py-2 rounded-lg border hover:bg-primary hover:text-primary-foreground text-sm font-medium capitalize transition-colors">
+                  {r === 'alumno' ? '🎓 Alumno' : r === 'patrocinador' ? '🤝 Patrocinador' : '🛡️ Administrador'}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setRoleModal(null)} className="w-full text-sm text-muted-foreground hover:text-foreground">Cancelar</button>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-2 mb-4">
         <Search className="w-4 h-4 text-muted-foreground" />
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar prospecto..."
@@ -431,7 +460,7 @@ function ProspectsAdmin() {
                   <td className="px-4 py-3 text-muted-foreground">{p.interes || '-'}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${STATE_COLOR[p.estado] || ''}`}>{p.estado}</span>
-                    {p.user_id && <span className="ml-2 text-xs text-green-600">user</span>}
+                    {p.user_id && <span className="ml-2 text-xs text-green-600">✓ usuario</span>}
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(p.created_at).toLocaleDateString('es-MX')}</td>
                   <td className="px-4 py-3">
@@ -779,4 +808,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
