@@ -20,11 +20,6 @@ const LessonPage = () => {
   const [allLessons, setAllLessons] = useState([]);
   const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [showQuiz, setShowQuiz] = useState(false);
-  const [quizAnswers, setQuizAnswers] = useState({});
-  const [quizSubmitted, setQuizSubmitted] = useState(false);
-  const [quizPassed, setQuizPassed] = useState(false);
-  const [quizQuestions, setQuizQuestions] = useState([]);
 
   useEffect(() => {
     if (!user) return;
@@ -40,15 +35,6 @@ const LessonPage = () => {
       }
       const progress = await getUserProgress(user.id);
       setIsCompleted(progress.some(p => p.lesson_id === lessonId && p.completed));
-      // Cargar mini-quiz de Supabase (si existe para este módulo)
-      const { data: qs } = await supabase
-        .from('questions')
-        .select('*')
-        .eq('module_id', moduleId)
-        .eq('active', true)
-        .order('order_num')
-        .limit(3);
-      setQuizQuestions(qs || []);
       setLoading(false);
     }
     load();
@@ -57,18 +43,9 @@ const LessonPage = () => {
   const handleComplete = async () => {
     await markLessonComplete(user.id, lessonId);
     setIsCompleted(true);
-    setShowQuiz(true);
     toast.success('¡Lección completada!');
   };
 
-  const handleQuizSubmit = () => {
-    const correct = quizQuestions.filter((q, i) => quizAnswers[i] === q.correct).length;
-    const passed = correct >= Math.ceil(quizQuestions.length * 0.6);
-    setQuizPassed(passed);
-    setQuizSubmitted(true);
-    if (passed) toast.success(`¡Mini-examen aprobado! ${correct}/${quizQuestions.length} correctas`);
-    else toast.error(`${correct}/${quizQuestions.length} correctas. ¡Inténtalo de nuevo!`);
-  };
 
   const currentIdx = allLessons.findIndex(l => l.id === lessonId);
   const nextLesson = allLessons[currentIdx + 1];
@@ -126,51 +103,6 @@ const LessonPage = () => {
                 <div className="prose prose-sm max-w-none text-foreground leading-relaxed whitespace-pre-wrap">
                   {lesson.content}
                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {showQuiz && quizQuestions.length > 0 && (
-            <Card className="mb-6 border-primary/50">
-              <CardContent className="p-6">
-                <h2 className="text-lg font-semibold mb-4 text-primary">Mini examen de la lección</h2>
-                {quizQuestions.map((q, qi) => (
-                  <div key={qi} className="mb-5">
-                    <p className="font-medium mb-3">{qi + 1}. {q.question}</p>
-                    <div className="space-y-2">
-                      {q.options.map((opt, oi) => (
-                        <label key={oi} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                          quizSubmitted
-                            ? oi === q.correct ? 'border-green-500 bg-green-50 dark:bg-green-950'
-                            : quizAnswers[qi] === oi ? 'border-red-500 bg-red-50 dark:bg-red-950'
-                            : 'border-border'
-                            : quizAnswers[qi] === oi ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
-                        }`}>
-                          <input type="radio" name={`q${qi}`} disabled={quizSubmitted}
-                            checked={quizAnswers[qi] === oi}
-                            onChange={() => setQuizAnswers(p => ({...p, [qi]: oi}))}
-                            className="text-primary" />
-                          <span className="text-sm">{opt}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                {!quizSubmitted ? (
-                  <Button onClick={handleQuizSubmit} disabled={Object.keys(quizAnswers).length < quizQuestions.length} className="w-full">
-                    Enviar respuestas
-                  </Button>
-                ) : (
-                  <div className={`p-4 rounded-lg text-center ${quizPassed ? 'bg-green-50 dark:bg-green-950 text-green-800 dark:text-green-200' : 'bg-red-50 dark:bg-red-950 text-red-800 dark:text-red-200'}`}>
-                    <p className="font-semibold text-lg">{quizPassed ? '¡Excelente!' : 'Sigue practicando'}</p>
-                    <p className="text-sm">{quizPassed ? '¡Continúa con la siguiente lección!' : 'Repasa el contenido e inténtalo de nuevo.'}</p>
-                    {!quizPassed && (
-                      <Button variant="outline" size="sm" className="mt-3" onClick={() => { setQuizAnswers({}); setQuizSubmitted(false); }}>
-                        Intentar de nuevo
-                      </Button>
-                    )}
-                  </div>
-                )}
               </CardContent>
             </Card>
           )}
