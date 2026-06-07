@@ -5,64 +5,69 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Helmet } from 'react-helmet-async';
-import { User, Award, Flame, TrendingUp, Trophy } from 'lucide-react';
-import { modulesData } from '@/components/LessonContent.jsx';
+import { User, Award, Flame, TrendingUp, Trophy, RefreshCw } from 'lucide-react';
+import { getModules, getUserProgress, getUserEvaluations } from '@/lib/supabaseClient.js';
+
+const LEVELS = [
+  { name: 'Semilla',     min: 0,   color: 'bg-gray-500' },
+  { name: 'Brote',       min: 20,  color: 'bg-green-500' },
+  { name: 'Raíz',        min: 40,  color: 'bg-blue-500' },
+  { name: 'Árbol',       min: 60,  color: 'bg-purple-500' },
+  { name: 'Diamante ADN',min: 80,  color: 'bg-primary' },
+];
+
+function getLevel(pct) {
+  return [...LEVELS].reverse().find(l => pct >= l.min) || LEVELS[0];
+}
 
 const ProfilePage = () => {
-  const { user, getStreak } = useAuth();
-  const [stats, setStats] = useState({
-    overallProgress: 0,
-    level: 'Semilla',
-    badges: [],
-  });
-  const [ranking, setRanking] = useState([]);
+  const { user, profile, getStreak } = useAuth();
+  const [stats, setStats] = useState({ overallProgress: 0, badges: [] });
+  const [loading, setLoading] = useState(true);
+
+  const nombreCompleto = profile?.nombre_completo || user?.email || 'Usuario';
 
   useEffect(() => {
-    const progress = JSON.parse(localStorage.getItem('adnPueblaProgress') || '{}');
-    const badges = JSON.parse(localStorage.getItem('adnPueblaBadges') || '[]');
-
-    let totalLessons = 0;
-    let completedLessons = 0;
-
-    modulesData.forEach((module) => {
-      totalLessons += module.lessons.length;
-      const moduleProgress = progress[module.id] || {};
-      completedLessons += Object.values(moduleProgress).filter(Boolean).length;
-    });
-
-    const overallProgress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
-
-    let level = 'Semilla';
-    if (overallProgress >= 80) level = 'Diamante ADN';
-    else if (overallProgress >= 60) level = 'Árbol';
-    else if (overallProgress >= 40) level = 'Raíz';
-    else if (overallProgress >= 20) level = 'Brote';
-
-    setStats({ overallProgress, level, badges });
-
-    const mockRanking = [
-      { name: 'Carlos Ramírez', progress: 94 },
-      { name: 'Ana Martínez', progress: 87 },
-      { name: 'Luis Hernández', progress: 83 },
-      { name: user.nombreCompleto, progress: overallProgress },
-      { name: 'Patricia Gómez', progress: 71 },
-    ].sort((a, b) => b.progress - a.progress);
-
-    setRanking(mockRanking.slice(0, 5));
+    if (!user) return;
+    async function loadData() {
+      const [mods, progress, evals] = await Promise.all([
+        getModules(),
+        getUserProgress(user.id),
+        getUserEvaluations(user.id),
+      ]);
+      const completedIds = new Set(progress.filter(p => p.completed).map(p => p.lesson_id));
+      let total = 0, completed = 0;
+      const badges = [];
+      mods.forEach(mod => {
+        const lessons = mod.lessons || [];
+        total += lessons.length;
+        const done = lessons.filter(l => completedIds.has(l.id)).length;
+        completed += done;
+        const passed = evals.some(e => e.module_id === mod.id && e.passed);
+        if (passed) badges.push(mod.id);
+      });
+      const overallProgress = total > 0 ? Math.round((completed / total) * 100) : 0;
+      setStats({ overallProgress, badges });
+      setLoading(false);
+    }
+    loadData();
   }, [user]);
 
-  const levelColors = {
-    'Semilla': 'bg-gray-500',
-    'Brote': 'bg-green-500',
-    'Raíz': 'bg-blue-500',
-    'Árbol': 'bg-purple-500',
-    'Diamante ADN': 'bg-primary',
-  };
+  const level = getLevel(stats.overallProgress);
+
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <RefreshCw className="w-4 h-4 animate-spin" />
+        <span>Cargando perfil...</span>
+      </div>
+    </div>
+  );
 
   return (
     <>
       <Helmet>
-        <title>{`Perfil de ${user.nombreCompleto} | ADN Puebla`}</title>
+        <title>{`Perfil de ${nombreCompleto} | ADN Puebla`}</title>
         <meta name="description" content="Tu perfil, progreso y logros en ADN Puebla" />
       </Helmet>
 
@@ -72,16 +77,12 @@ const ProfilePage = () => {
             <h1 className="text-3xl md:text-4xl font-bold mb-2" style={{letterSpacing: '-0.02em'}}>
               Mi perfil
             </h1>
-            <p className="text-muted-foreground text-lg">
-              Tu progreso y logros en ADN Puebla
-            </p>
+            <p className="text-muted-foreground text-lg">Tu progreso y logros en ADN Puebla</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Información personal</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle>Información personal</CardTitle></CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center space-x-4">
@@ -89,36 +90,42 @@ const ProfilePage = () => {
                       <User className="w-8 h-8 text-primary-foreground" />
                     </div>
                     <div>
-                      <p className="font-semibold text-lg">{user.nombreCompleto}</p>
-                      <p className="text-sm text-muted-foreground">Código: {user.codigoDistribuidor}</p>
+                      <p className="font-semibold text-lg">{nombreCompleto}</p>
+                      <p className="text-sm text-muted-foreground">{user?.email}</p>
                     </div>
                   </div>
-
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Patrocinador</p>
-                      <p className="font-medium">{user.nombrePatrocinador}</p>
-                    </div>
+                    {profile?.codigo_distribuidor && (
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Código distribuidor</p>
+                        <p className="font-medium font-mono">{profile.codigo_distribuidor}</p>
+                      </div>
+                    )}
+                    {profile?.nombre_patrocinador && (
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Patrocinador</p>
+                        <p className="font-medium">{profile.nombre_patrocinador}</p>
+                      </div>
+                    )}
                     <div>
                       <p className="text-sm text-muted-foreground mb-1">Tipo de usuario</p>
-                      <Badge>{user.tipoUsuario === 'patrocinador' ? 'Patrocinador' : 'Alumno'}</Badge>
+                      <Badge>{profile?.role === 'patrocinador' ? 'Patrocinador' : profile?.role === 'admin' ? 'Admin' : 'Alumno'}</Badge>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground mb-1">Nivel actual</p>
                       <div className="flex items-center space-x-2">
-                        <div className={`w-3 h-3 rounded-full ${levelColors[stats.level]}`}></div>
-                        <p className="font-medium">{stats.level}</p>
+                        <div className={`w-3 h-3 rounded-full ${level.color}`}></div>
+                        <p className="font-medium">{level.name}</p>
                       </div>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground mb-1">Racha de días</p>
                       <div className="flex items-center space-x-2">
-                        <Flame className="w-5 h-5 text-primary streak-flame" />
+                        <Flame className="w-5 h-5 text-primary" />
                         <p className="font-medium">{getStreak()} días consecutivos</p>
                       </div>
                     </div>
                   </div>
-
                   <div className="pt-4 border-t">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm font-medium">Progreso general</p>
@@ -139,18 +146,16 @@ const ProfilePage = () => {
               </CardHeader>
               <CardContent>
                 {stats.badges.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    Completa módulos para ganar insignias
+                  <p className="text-center text-muted-foreground py-8 text-sm">
+                    Completa y aprueba módulos para ganar insignias
                   </p>
                 ) : (
                   <div className="grid grid-cols-3 gap-4">
                     {stats.badges.map((moduleId) => (
-                      <div
-                        key={moduleId}
-                        className="aspect-square bg-primary/10 rounded-xl flex flex-col items-center justify-center badge-celebration"
-                      >
+                      <div key={moduleId}
+                        className="aspect-square bg-primary/10 rounded-xl flex flex-col items-center justify-center">
                         <Trophy className="w-8 h-8 text-primary mb-1" />
-                        <p className="text-xs font-medium text-primary">Módulo {moduleId}</p>
+                        <p className="text-xs font-medium text-primary">Aprobado</p>
                       </div>
                     ))}
                   </div>
@@ -158,50 +163,6 @@ const ProfilePage = () => {
               </CardContent>
             </Card>
           </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <TrendingUp className="w-5 h-5 text-primary" />
-                <span>Ranking del equipo</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {ranking.map((member, index) => (
-                  <div
-                    key={index}
-                    className={`flex items-center justify-between p-4 rounded-lg ${
-                      member.name === user.nombreCompleto
-                        ? 'bg-primary/10 border-2 border-primary'
-                        : 'bg-muted'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-4">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
-                        index === 0 ? 'bg-yellow-500 text-white' :
-                        index === 1 ? 'bg-gray-400 text-white' :
-                        index === 2 ? 'bg-orange-600 text-white' :
-                        'bg-muted-foreground/20'
-                      }`}>
-                        {index + 1}
-                      </div>
-                      <div>
-                        <p className="font-medium">{member.name}</p>
-                        {member.name === user.nombreCompleto && (
-                          <Badge variant="outline" className="mt-1">Tú</Badge>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-primary">{member.progress}%</p>
-                      <p className="text-xs text-muted-foreground">progreso</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </>
