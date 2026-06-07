@@ -9,11 +9,7 @@ import { useAuth } from '@/contexts/AuthContext.jsx';
 import { supabase, markLessonComplete, getUserProgress } from '@/lib/supabaseClient.js';
 import { toast } from 'sonner';
 
-const QUIZ_QUESTIONS = [
-  { q: '¿Cuál es el objetivo principal de esta lección?', options: ['Comprender el tema en profundidad', 'Memorizar datos sin contexto', 'Ignorar los conceptos clave', 'Evitar aplicar lo aprendido'], correct: 0 },
-  { q: '¿Qué actitud es fundamental para el crecimiento financiero?', options: ['Indiferencia ante el dinero', 'Mentalidad de abundancia y aprendizaje continuo', 'Gastar sin planificación', 'Depender de otros para decidir'], correct: 1 },
-  { q: '¿Qué debes hacer con lo aprendido en esta lección?', options: ['Olvidarlo después del módulo', 'Aplicarlo en tu vida diaria', 'Guardarlo sin compartir', 'Esperar instrucciones adicionales'], correct: 1 },
-];
+
 
 const LessonPage = () => {
   const { moduleId, lessonId } = useParams();
@@ -28,6 +24,7 @@ const LessonPage = () => {
   const [quizAnswers, setQuizAnswers] = useState({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizPassed, setQuizPassed] = useState(false);
+  const [quizQuestions, setQuizQuestions] = useState([]);
 
   useEffect(() => {
     if (!user) return;
@@ -43,6 +40,15 @@ const LessonPage = () => {
       }
       const progress = await getUserProgress(user.id);
       setIsCompleted(progress.some(p => p.lesson_id === lessonId && p.completed));
+      // Cargar mini-quiz de Supabase (si existe para este módulo)
+      const { data: qs } = await supabase
+        .from('questions')
+        .select('*')
+        .eq('module_id', moduleId)
+        .eq('active', true)
+        .order('order_num')
+        .limit(3);
+      setQuizQuestions(qs || []);
       setLoading(false);
     }
     load();
@@ -56,12 +62,12 @@ const LessonPage = () => {
   };
 
   const handleQuizSubmit = () => {
-    const correct = QUIZ_QUESTIONS.filter((q, i) => quizAnswers[i] === q.correct).length;
-    const passed = correct >= 2;
+    const correct = quizQuestions.filter((q, i) => quizAnswers[i] === q.correct).length;
+    const passed = correct >= Math.ceil(quizQuestions.length * 0.6);
     setQuizPassed(passed);
     setQuizSubmitted(true);
-    if (passed) toast.success(`¡Mini-examen aprobado! ${correct}/${QUIZ_QUESTIONS.length} correctas`);
-    else toast.error(`${correct}/${QUIZ_QUESTIONS.length} correctas. ¡Inténtalo de nuevo!`);
+    if (passed) toast.success(`¡Mini-examen aprobado! ${correct}/${quizQuestions.length} correctas`);
+    else toast.error(`${correct}/${quizQuestions.length} correctas. ¡Inténtalo de nuevo!`);
   };
 
   const currentIdx = allLessons.findIndex(l => l.id === lessonId);
@@ -124,13 +130,13 @@ const LessonPage = () => {
             </Card>
           )}
 
-          {showQuiz && (
+          {showQuiz && quizQuestions.length > 0 && (
             <Card className="mb-6 border-primary/50">
               <CardContent className="p-6">
                 <h2 className="text-lg font-semibold mb-4 text-primary">Mini examen de la lección</h2>
-                {QUIZ_QUESTIONS.map((q, qi) => (
+                {quizQuestions.map((q, qi) => (
                   <div key={qi} className="mb-5">
-                    <p className="font-medium mb-3">{qi + 1}. {q.q}</p>
+                    <p className="font-medium mb-3">{qi + 1}. {q.question}</p>
                     <div className="space-y-2">
                       {q.options.map((opt, oi) => (
                         <label key={oi} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
@@ -151,7 +157,7 @@ const LessonPage = () => {
                   </div>
                 ))}
                 {!quizSubmitted ? (
-                  <Button onClick={handleQuizSubmit} disabled={Object.keys(quizAnswers).length < QUIZ_QUESTIONS.length} className="w-full">
+                  <Button onClick={handleQuizSubmit} disabled={Object.keys(quizAnswers).length < quizQuestions.length} className="w-full">
                     Enviar respuestas
                   </Button>
                 ) : (
