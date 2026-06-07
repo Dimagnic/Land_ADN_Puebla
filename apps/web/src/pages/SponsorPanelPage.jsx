@@ -1,251 +1,404 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Helmet } from 'react-helmet-async';
-import { Users, MessageCircle, AlertCircle, Trophy, TrendingUp } from 'lucide-react';
+import { Users, MessageCircle, AlertCircle, Trophy, TrendingUp, Link2, Copy, Check, RefreshCw, CheckCircle2, XCircle, UserMinus, UserCheck, Edit2, X, Save } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext.jsx';
+import { supabase } from '@/lib/supabaseClient.js';
+import { toast } from 'sonner';
 
-const SponsorPanelPage = () => {
-  const [students, setStudents] = useState([]);
-  const [filter, setFilter] = useState('all');
+const STATUS_LABEL = { activo: 'Activo', pendiente: 'Pendiente', rechazado: 'Rechazado', pendiente_update: 'En revisión' };
+const STATUS_COLOR = { activo: 'bg-green-100 text-green-800', pendiente: 'bg-yellow-100 text-yellow-800', rechazado: 'bg-red-100 text-red-800', pendiente_update: 'bg-blue-100 text-blue-800' };
+
+export default function SponsorPanelPage() {
+  const { user, profile } = useAuth();
+  const [students, setStudents]   = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [filter, setFilter]       = useState('todos');
+  const [token, setToken]         = useState('');
+  const [copied, setCopied]       = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm]   = useState({});
+  const [saving, setSaving]       = useState(false);
+
+  // ── Cargar alumnos del patrocinador ──────────────────────────
+  const loadStudents = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, nombre_completo, telefono, status, role, last_seen_at, created_at, codigo_distribuidor')
+      .eq('sponsor_id', user.id)
+      .order('created_at', { ascending: false });
+    if (!error) setStudents(data || []);
+    setLoading(false);
+  }, [user]);
+
+  // ── Cargar / generar token de enlace ─────────────────────────
+  const loadToken = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('sponsor_links')
+      .select('token')
+      .eq('sponsor_id', user.id)
+      .eq('active', true)
+      .single();
+    if (data?.token) {
+      setToken(data.token);
+    } else {
+      const { data: newToken } = await supabase
+        .rpc('generate_sponsor_token', { p_sponsor_id: user.id });
+      if (newToken) setToken(newToken);
+    }
+  }, [user]);
 
   useEffect(() => {
-    const mockStudents = [
-      {
-        id: 1,
-        name: 'María González',
-        code: 'GEM2847',
-        progress: 83,
-        modulesCompleted: 5,
-        lastLogin: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'active',
-      },
-      {
-        id: 2,
-        name: 'Juan Pérez',
-        code: 'GEM2891',
-        progress: 47,
-        modulesCompleted: 3,
-        lastLogin: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'active',
-      },
-      {
-        id: 3,
-        name: 'Ana Martínez',
-        code: 'GEM2923',
-        progress: 100,
-        modulesCompleted: 7,
-        lastLogin: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'completed',
-      },
-      {
-        id: 4,
-        name: 'Carlos López',
-        code: 'GEM2956',
-        progress: 21,
-        modulesCompleted: 1,
-        lastLogin: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'inactive',
-      },
-      {
-        id: 5,
-        name: 'Laura Sánchez',
-        code: 'GEM2978',
-        progress: 64,
-        modulesCompleted: 4,
-        lastLogin: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'active',
-      },
-    ];
+    loadStudents();
+    loadToken();
+  }, [loadStudents, loadToken]);
 
-    setStudents(mockStudents);
-  }, []);
+  const registroUrl = token
+    ? `https://adnpuebla.site/registro?ref=${token}`
+    : '';
 
-  const filteredStudents = students.filter((s) => {
-    if (filter === 'active') return s.status === 'active';
-    if (filter === 'inactive') return s.status === 'inactive';
-    if (filter === 'completed') return s.status === 'completed';
+  const copyLink = async () => {
+    if (!registroUrl) return;
+    await navigator.clipboard.writeText(registroUrl);
+    setCopied(true);
+    toast.success('Enlace copiado al portapapeles');
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  // ── Aprobar alumno (pendiente → activo) ──────────────────────
+  const aprobar = async (id, nombre) => {
+    const { error } = await supabase
+      .from('profiles').update({ status: 'activo' }).eq('id', id);
+    if (error) { toast.error('Error al aprobar'); return; }
+    toast.success(`${nombre} aprobado`);
+    loadStudents();
+  };
+
+  // ── Rechazar alumno ──────────────────────────────────────────
+  const rechazar = async (id, nombre) => {
+    const { error } = await supabase
+      .from('profiles').update({ status: 'rechazado' }).eq('id', id);
+    if (error) { toast.error('Error al rechazar'); return; }
+    toast.success(`${nombre} rechazado`);
+    loadStudents();
+  };
+
+  // ── Dar de baja ──────────────────────────────────────────────
+  const darDeBaja = async (id, nombre) => {
+    if (!confirm(`¿Dar de baja a ${nombre}? Perderá acceso a la plataforma.`)) return;
+    const { error } = await supabase
+      .from('profiles').update({ status: 'rechazado' }).eq('id', id);
+    if (error) { toast.error('Error'); return; }
+    toast.success(`${nombre} dado de baja`);
+    loadStudents();
+  };
+
+  // ── Reactivar ────────────────────────────────────────────────
+  const reactivar = async (id, nombre) => {
+    const { error } = await supabase
+      .from('profiles').update({ status: 'pendiente' }).eq('id', id);
+    if (error) { toast.error('Error'); return; }
+    toast.success(`Solicitud de reactivación enviada. El admin revisará.`);
+    loadStudents();
+  };
+
+  // ── Editar alumno (pone en pendiente_update) ─────────────────
+  const startEdit = (student) => {
+    setEditingId(student.id);
+    setEditForm({ nombre_completo: student.nombre_completo || '', telefono: student.telefono || '' });
+  };
+
+  const saveEdit = async (student) => {
+    setSaving(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        nombre_completo: editForm.nombre_completo,
+        telefono: editForm.telefono,
+        status: 'pendiente_update',
+      })
+      .eq('id', student.id);
+    setSaving(false);
+    if (error) { toast.error('Error al guardar'); return; }
+    toast.success('Cambios enviados. El administrador los revisará antes de aplicarlos.');
+    setEditingId(null);
+    loadStudents();
+  };
+
+  // ── Filtros ───────────────────────────────────────────────────
+  const filtered = students.filter(s => {
+    if (filter === 'todos') return true;
+    if (filter === 'pendiente') return s.status === 'pendiente';
+    if (filter === 'activo') return s.status === 'activo';
+    if (filter === 'baja') return s.status === 'rechazado';
     return true;
   });
 
-  const stats = {
-    total: students.length,
-    active: students.filter((s) => s.status === 'active').length,
-    inactive: students.filter((s) => s.status === 'inactive').length,
-    completed: students.filter((s) => s.status === 'completed').length,
+  const daysSince = (date) => {
+    if (!date) return null;
+    return Math.floor((Date.now() - new Date(date).getTime()) / 86400000);
   };
 
-  const getDaysSinceLogin = (lastLogin) => {
-    const days = Math.floor((Date.now() - new Date(lastLogin).getTime()) / (1000 * 60 * 60 * 24));
-    return days;
+  const stats = {
+    total:     students.length,
+    pendiente: students.filter(s => s.status === 'pendiente').length,
+    activo:    students.filter(s => s.status === 'activo').length,
+    baja:      students.filter(s => s.status === 'rechazado').length,
   };
 
   return (
     <>
       <Helmet>
         <title>Panel de patrocinador | ADN Puebla</title>
-        <meta name="description" content="Gestiona y monitorea el progreso de tus distribuidores" />
       </Helmet>
-
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+          {/* Título */}
           <div className="mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2" style={{letterSpacing: '-0.02em'}}>
+            <h1 className="text-3xl md:text-4xl font-bold mb-2" style={{letterSpacing:'-0.02em'}}>
               Panel de patrocinador
             </h1>
             <p className="text-muted-foreground text-lg">
-              Monitorea el progreso de tu equipo
+              Bienvenido, {profile?.nombre_completo?.split(' ')[0] || 'Patrocinador'}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Total alumnos</p>
-                    <p className="text-3xl font-bold">{stats.total}</p>
-                  </div>
-                  <Users className="w-10 h-10 text-primary" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Activos</p>
-                    <p className="text-3xl font-bold text-green-600">{stats.active}</p>
-                  </div>
-                  <TrendingUp className="w-10 h-10 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Inactivos</p>
-                    <p className="text-3xl font-bold text-destructive">{stats.inactive}</p>
-                  </div>
-                  <AlertCircle className="w-10 h-10 text-destructive" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Certificados</p>
-                    <p className="text-3xl font-bold text-primary">{stats.completed}</p>
-                  </div>
-                  <Trophy className="w-10 h-10 text-primary" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Distribuidores</CardTitle>
+          {/* Enlace de registro */}
+          <Card className="mb-8 border-primary/30">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Link2 className="w-5 h-5 text-primary" />
+                Mi enlace de registro
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <Tabs value={filter} onValueChange={setFilter}>
-                <TabsList className="mb-6">
-                  <TabsTrigger value="all">Todos</TabsTrigger>
-                  <TabsTrigger value="active">Activos</TabsTrigger>
-                  <TabsTrigger value="inactive">Inactivos</TabsTrigger>
-                  <TabsTrigger value="completed">Completados</TabsTrigger>
-                </TabsList>
+              <p className="text-sm text-muted-foreground mb-3">
+                Comparte este enlace con tus prospectos. Tu código se asignará automáticamente al registrarse.
+              </p>
+              {token ? (
+                <div className="flex gap-2 items-center">
+                  <Input
+                    value={registroUrl}
+                    readOnly
+                    className="font-mono text-sm bg-muted"
+                  />
+                  <Button onClick={copyLink} variant="outline" className="flex-shrink-0 gap-2">
+                    {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                    {copied ? 'Copiado' : 'Copiar'}
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Generando tu enlace...
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-                <TabsContent value={filter}>
-                  <div className="space-y-4">
-                    {filteredStudents.map((student) => {
-                      const daysSinceLogin = getDaysSinceLogin(student.lastLogin);
-                      const isInactive = daysSinceLogin >= 7;
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            {[
+              { label: 'Total', value: stats.total, icon: Users, color: 'text-primary' },
+              { label: 'Pendientes', value: stats.pendiente, icon: AlertCircle, color: 'text-yellow-600' },
+              { label: 'Activos', value: stats.activo, icon: TrendingUp, color: 'text-green-600' },
+              { label: 'De baja', value: stats.baja, icon: Trophy, color: 'text-muted-foreground' },
+            ].map(({ label, value, icon: Icon, color }) => (
+              <Card key={label}>
+                <CardContent className="pt-5 pb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">{label}</p>
+                      <p className={`text-3xl font-bold ${color}`}>{value}</p>
+                    </div>
+                    <Icon className={`w-9 h-9 ${color}`} />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
-                      return (
-                        <div
-                          key={student.id}
-                          className={`p-4 rounded-lg border ${
-                            isInactive ? 'border-destructive/50 bg-destructive/5' : 'hover:bg-muted'
-                          } transition-colors duration-200`}
-                        >
-                          <div className="flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0">
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-3 mb-2">
-                                <h3 className="font-semibold text-lg">{student.name}</h3>
-                                <Badge variant="outline">{student.code}</Badge>
-                                {student.status === 'completed' && (
-                                  <Badge variant="default">Certificado</Badge>
-                                )}
-                                {isInactive && (
-                                  <Badge variant="destructive" className="flex items-center space-x-1">
-                                    <AlertCircle className="w-3 h-3" />
-                                    <span>Inactivo</span>
-                                  </Badge>
+          {/* Alerta de pendientes */}
+          {stats.pendiente > 0 && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 flex items-center gap-3">
+              <AlertCircle className="w-6 h-6 text-yellow-600 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="font-semibold text-yellow-800">
+                  {stats.pendiente} alumno{stats.pendiente > 1 ? 's' : ''} esperando tu aprobación
+                </p>
+                <p className="text-sm text-yellow-700">Revisa y aprueba o rechaza las solicitudes.</p>
+              </div>
+              <Button size="sm" onClick={() => setFilter('pendiente')} className="bg-yellow-500 hover:bg-yellow-400 text-black">
+                Ver pendientes
+              </Button>
+            </div>
+          )}
+
+          {/* Tabla */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <CardTitle>Mis alumnos</CardTitle>
+                <div className="flex gap-1 flex-wrap">
+                  {['todos','pendiente','activo','baja'].map(f => (
+                    <button key={f} onClick={() => setFilter(f)}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-colors ${
+                        filter === f ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}>
+                      {f === 'baja' ? 'De baja' : f.charAt(0).toUpperCase() + f.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Cargando alumnos...</span>
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="text-center py-12">
+                  <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">
+                    {filter === 'todos'
+                      ? 'Aún no tienes alumnos. Comparte tu enlace de registro.'
+                      : 'No hay alumnos en esta categoría.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filtered.map(student => {
+                    const dias = daysSince(student.last_seen_at);
+                    const isEditing = editingId === student.id;
+                    return (
+                      <div key={student.id}
+                        className={`border rounded-xl p-4 transition-colors ${
+                          student.status === 'pendiente' ? 'border-yellow-200 bg-yellow-50/50' :
+                          student.status === 'rechazado' ? 'border-muted bg-muted/20' : 'hover:bg-muted/30'
+                        }`}>
+                        <div className="flex flex-col lg:flex-row lg:items-start gap-4">
+                          <div className="flex-1 space-y-3">
+                            {/* Nombre + badge */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {isEditing ? (
+                                <Input
+                                  value={editForm.nombre_completo}
+                                  onChange={e => setEditForm(p => ({...p, nombre_completo: e.target.value}))}
+                                  className="h-8 text-sm font-semibold max-w-[220px]"
+                                />
+                              ) : (
+                                <h3 className="font-semibold text-lg">{student.nombre_completo || '—'}</h3>
+                              )}
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLOR[student.status] || ''}`}>
+                                {STATUS_LABEL[student.status] || student.status}
+                              </span>
+                            </div>
+
+                            {/* Datos */}
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                              <div>
+                                <p className="text-muted-foreground text-xs mb-0.5">Teléfono</p>
+                                {isEditing ? (
+                                  <Input
+                                    value={editForm.telefono}
+                                    onChange={e => setEditForm(p => ({...p, telefono: e.target.value}))}
+                                    className="h-7 text-sm"
+                                    placeholder="10 dígitos"
+                                  />
+                                ) : (
+                                  <p className="font-medium">{student.telefono || '—'}</p>
                                 )}
                               </div>
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                                <div>
-                                  <p className="text-muted-foreground">Progreso</p>
-                                  <p className="font-semibold text-primary">{student.progress}%</p>
-                                </div>
-                                <div>
-                                  <p className="text-muted-foreground">Módulos</p>
-                                  <p className="font-semibold">{student.modulesCompleted} / 7</p>
-                                </div>
-                                <div>
-                                  <p className="text-muted-foreground">Última conexión</p>
-                                  <p className="font-semibold">
-                                    {daysSinceLogin === 0
-                                      ? 'Hoy'
-                                      : daysSinceLogin === 1
-                                      ? 'Ayer'
-                                      : `Hace ${daysSinceLogin} días`}
-                                  </p>
-                                </div>
-                                <div>
-                                  <p className="text-muted-foreground">Estado</p>
-                                  <p className={`font-semibold ${
-                                    student.status === 'completed' ? 'text-primary' :
-                                    student.status === 'active' ? 'text-green-600' :
-                                    'text-destructive'
-                                  }`}>
-                                    {student.status === 'completed' ? 'Completado' :
-                                     student.status === 'active' ? 'Activo' :
-                                     'Inactivo'}
-                                  </p>
-                                </div>
+                              <div>
+                                <p className="text-muted-foreground text-xs mb-0.5">Última actividad</p>
+                                <p className="font-medium">
+                                  {dias === null ? '—' : dias === 0 ? 'Hoy' : dias === 1 ? 'Ayer' : `Hace ${dias} días`}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground text-xs mb-0.5">Registro</p>
+                                <p className="font-medium">{new Date(student.created_at).toLocaleDateString('es-MX')}</p>
                               </div>
                             </div>
-                            <Button asChild size="sm" className="lg:ml-4">
-                              <a
-                                href={`https://wa.me/5212221234567?text=Hola ${student.name}, soy tu patrocinador`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <MessageCircle className="w-4 h-4 mr-2" />
-                                Contactar
-                              </a>
-                            </Button>
+
+                            {/* Nota si edición pendiente */}
+                            {student.status === 'pendiente_update' && !isEditing && (
+                              <p className="text-xs text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg">
+                                Cambios enviados — el administrador los revisará pronto.
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Acciones */}
+                          <div className="flex flex-wrap gap-2 lg:flex-col lg:items-end">
+                            {student.status === 'pendiente' && (
+                              <>
+                                <Button size="sm" onClick={() => aprobar(student.id, student.nombre_completo)}
+                                  className="bg-green-600 hover:bg-green-700 gap-1">
+                                  <CheckCircle2 className="w-4 h-4" /> Aprobar
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={() => rechazar(student.id, student.nombre_completo)} className="gap-1">
+                                  <XCircle className="w-4 h-4" /> Rechazar
+                                </Button>
+                              </>
+                            )}
+
+                            {student.status === 'activo' && !isEditing && (
+                              <>
+                                <Button size="sm" variant="outline" onClick={() => startEdit(student)} className="gap-1">
+                                  <Edit2 className="w-4 h-4" /> Editar
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => darDeBaja(student.id, student.nombre_completo)}
+                                  className="gap-1 text-destructive hover:text-destructive">
+                                  <UserMinus className="w-4 h-4" /> Dar de baja
+                                </Button>
+                                {student.telefono && (
+                                  <Button size="sm" asChild>
+                                    <a href={`https://wa.me/52${student.telefono.replace(/\D/g,'')}?text=Hola ${student.nombre_completo?.split(' ')[0]}, soy tu patrocinador`}
+                                      target="_blank" rel="noopener noreferrer" className="gap-1">
+                                      <MessageCircle className="w-4 h-4" /> WhatsApp
+                                    </a>
+                                  </Button>
+                                )}
+                              </>
+                            )}
+
+                            {isEditing && (
+                              <>
+                                <Button size="sm" onClick={() => saveEdit(student)} disabled={saving} className="gap-1">
+                                  <Save className="w-4 h-4" /> {saving ? 'Guardando...' : 'Guardar'}
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} className="gap-1">
+                                  <X className="w-4 h-4" /> Cancelar
+                                </Button>
+                              </>
+                            )}
+
+                            {student.status === 'rechazado' && (
+                              <Button size="sm" variant="outline" onClick={() => reactivar(student.id, student.nombre_completo)} className="gap-1">
+                                <UserCheck className="w-4 h-4" /> Solicitar reactivación
+                              </Button>
+                            )}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </TabsContent>
-              </Tabs>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
     </>
   );
-};
-
-export default SponsorPanelPage;
+}
