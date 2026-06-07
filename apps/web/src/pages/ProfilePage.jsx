@@ -95,10 +95,10 @@ const ProfilePage = () => {
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
-                    {profile?.codigo_distribuidor && (
+                    {profile?.codigo_adn && (
                       <div>
-                        <p className="text-sm text-muted-foreground mb-1">Código distribuidor</p>
-                        <p className="font-medium font-mono">{profile.codigo_distribuidor}</p>
+                        <p className="text-sm text-muted-foreground mb-1">Código ADN</p>
+                        <p className="font-medium font-mono">{profile.codigo_adn}</p>
                       </div>
                     )}
                     {profile?.nombre_patrocinador && (
