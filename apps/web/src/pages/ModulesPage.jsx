@@ -50,7 +50,8 @@ const ModulesPage = () => {
     const prev = modules[idx - 1];
     if (!prev) return false;
     const prevProgress = moduleProgress[prev.id];
-    return prevProgress && prevProgress.percentage >= 70;
+    // Desbloquea solo si el alumno aprobó el examen final del módulo anterior
+    return prevProgress && prevProgress.passed === true;
   };
 
   if (loading) return (
