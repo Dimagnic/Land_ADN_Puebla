@@ -84,9 +84,37 @@ export const getUserProgress = async (userId) => {
 };
 
 // ── EVALUATIONS ──────────────────────────────────────────────
-export const saveEvaluation = async (userId, moduleId, score, passed, answers) => {
-  await supabase.from('evaluations')
-    .insert([{ user_id: userId, module_id: moduleId, score, passed, answers }]);
+
+// Obtener intentos previos del alumno para un módulo
+export const getModuleAttempts = async (userId, moduleId) => {
+  const { data } = await supabase
+    .from('evaluations')
+    .select('id, score, passed, attempt_num, question_ids, taken_at, auto_submitted')
+    .eq('user_id', userId)
+    .eq('module_id', moduleId)
+    .order('attempt_num', { ascending: true });
+  return data || [];
+};
+
+// Guardar evaluación con todos los campos nuevos
+export const saveEvaluation = async (userId, moduleId, score, passed, answers, opts = {}) => {
+  const { attemptNum = 1, questionIds = [], timeUsedSec = 0, autoSubmitted = false } = opts;
+  const { data, error } = await supabase.from('evaluations')
+    .insert([{
+      user_id: userId,
+      module_id: moduleId,
+      score,
+      passed,
+      answers,
+      attempt_num: attemptNum,
+      question_ids: questionIds,
+      time_used_sec: timeUsedSec,
+      auto_submitted: autoSubmitted,
+    }])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 };
 
 export const getUserEvaluations = async (userId) => {
@@ -94,3 +122,40 @@ export const getUserEvaluations = async (userId) => {
     .from('evaluations').select('*, modules(title)').eq('user_id', userId).order('taken_at', { ascending: false });
   return data || [];
 };
+
+// Obtener preguntas aleatorias únicas para un intento
+// Usa userId + moduleId + attemptNum como semilla para garantizar
+// que diferentes alumnos y diferentes intentos tengan preguntas distintas
+export const getShuffledQuestions = async (moduleId, userId, attemptNum, total = 10) => {
+  const { data: allQs } = await supabase
+    .from('questions')
+    .select('*')
+    .eq('module_id', moduleId)
+    .eq('active', true);
+
+  if (!allQs || allQs.length === 0) return [];
+
+  // Semilla determinística: userId + moduleId + attemptNum
+  // Diferente por alumno Y por intento
+  const seed = `${userId}-${moduleId}-${attemptNum}`;
+  const shuffled = seededShuffle([...allQs], seed);
+  return shuffled.slice(0, Math.min(total, shuffled.length));
+};
+
+// Shuffle determinístico con semilla (Fisher-Yates + LCG)
+function seededShuffle(arr, seed) {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+  }
+  let state = Math.abs(hash) || 1;
+  const rand = () => {
+    state = (state * 1664525 + 1013904223) & 0xffffffff;
+    return (state >>> 0) / 0xffffffff;
+  };
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
