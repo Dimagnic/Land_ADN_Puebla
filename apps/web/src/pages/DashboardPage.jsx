@@ -8,6 +8,7 @@ import AnnouncementBoard from '@/components/AnnouncementBoard.jsx';
 import { Helmet } from 'react-helmet-async';
 import { BookOpen, CheckCircle2, Trophy, Flame, ArrowRight, MessageCircle, Award, Shield, LogOut, BookMarked, Calendar, Download, User } from 'lucide-react';
 import { getUserProgress, getUserEvaluations, getModules } from '@/lib/supabaseClient.js';
+import ThemeToggle from '@/components/ThemeToggle.jsx';
 
 const DashboardPage = () => {
   const { user, profile, isAdmin, logout, getStreak } = useAuth();
