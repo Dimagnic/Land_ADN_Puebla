@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import {
   Shield, Home, Users, BookOpen, Star, Calendar,
   Download, Megaphone, Settings, LogOut, Search,
-  Plus, Trash2, Save, ExternalLink, RefreshCw, Eye
+  Plus, Trash2, Save, ExternalLink, RefreshCw, Eye, ClipboardCheck, CheckCircle2, XCircle, AlertTriangle
 } from 'lucide-react';
 
 const SUPABASE_FUNCTIONS_URL = 'https://riqlkzzqkkiytoonnysj.functions.supabase.co';
@@ -731,6 +731,95 @@ function AnnouncementsAdmin() {
   );
 }
 
+
+function PendingChangesAdmin() {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    supabase
+      .from('profile_change_log')
+      .select('*, profile:profile_id(nombre_completo, telefono), sponsor:changed_by(nombre_completo)')
+      .eq('status', 'pendiente')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => { setItems(data || []); setLoading(false); });
+  };
+  useEffect(() => { load(); }, []);
+
+  const aprobar = async (item) => {
+    // Aplicar el cambio al perfil
+    await supabase.from('profiles').update({ [item.field_name]: item.new_value }).eq('id', item.profile_id);
+    // Si ya no hay más cambios pendientes para este perfil, volver a activo
+    const { data: pending } = await supabase
+      .from('profile_change_log')
+      .select('id')
+      .eq('profile_id', item.profile_id)
+      .eq('status', 'pendiente')
+      .neq('id', item.id);
+    if (!pending || pending.length === 0) {
+      await supabase.from('profiles').update({ status: 'activo' }).eq('id', item.profile_id);
+    }
+    await supabase.from('profile_change_log').update({ status: 'aprobado', reviewed_at: new Date().toISOString() }).eq('id', item.id);
+    toast.success('Cambio aprobado y aplicado');
+    load();
+  };
+
+  const rechazar = async (item) => {
+    await supabase.from('profile_change_log').update({ status: 'rechazado', reviewed_at: new Date().toISOString() }).eq('id', item.id);
+    // Revisar si quedan pendientes
+    const { data: pending } = await supabase
+      .from('profile_change_log').select('id').eq('profile_id', item.profile_id).eq('status', 'pendiente').neq('id', item.id);
+    if (!pending || pending.length === 0) {
+      await supabase.from('profiles').update({ status: 'activo' }).eq('id', item.profile_id);
+    }
+    toast.success('Cambio rechazado');
+    load();
+  };
+
+  const FIELD_LABEL = { nombre_completo: 'Nombre', telefono: 'Teléfono', email: 'Email' };
+
+  return (
+    <div>
+      {loading ? <Spinner /> : items.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <CheckCircle2 className="w-12 h-12 mx-auto mb-3 text-green-500" />
+          <p className="font-medium">No hay cambios pendientes de revisión</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {items.map(item => (
+            <div key={item.id} className="border rounded-xl p-4 bg-yellow-50/50 border-yellow-200">
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div className="space-y-1">
+                  <p className="font-semibold">{item.profile?.nombre_completo || 'Alumno'}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Cambio solicitado por <span className="font-medium">{item.sponsor?.nombre_completo || 'Patrocinador'}</span>
+                  </p>
+                  <div className="flex items-center gap-3 mt-2 text-sm">
+                    <span className="bg-muted px-2 py-1 rounded font-medium">{FIELD_LABEL[item.field_name] || item.field_name}</span>
+                    <span className="text-muted-foreground line-through">{item.old_value || '—'}</span>
+                    <span>→</span>
+                    <span className="text-foreground font-medium">{item.new_value}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{new Date(item.created_at).toLocaleString('es-MX')}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => aprobar(item)} className="bg-green-600 hover:bg-green-700 gap-1">
+                    <CheckCircle2 className="w-4 h-4" /> Aprobar
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => rechazar(item)} className="gap-1">
+                    <XCircle className="w-4 h-4" /> Rechazar
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const NAV = [
   { id: 'dashboard',    label: 'Dashboard',        icon: Home,        section: 'General' },
   { id: 'cms-hero',     label: 'Hero',              icon: Eye,         section: 'Sitio Público' },
@@ -742,13 +831,14 @@ const NAV = [
   { id: 'testimonios',  label: 'Testimonios',       icon: Star },
   { id: 'usuarios',     label: 'Usuarios',          icon: Users,       section: 'Gestión' },
   { id: 'prospectos',   label: 'Prospectos',        icon: Users },
+  { id: 'cambios',      label: 'Cambios pendientes', icon: ClipboardCheck },
   { id: 'modulos',      label: 'Módulos/Lecciones', icon: BookOpen,    section: 'Educativo' },
   { id: 'eventos',      label: 'Eventos',           icon: Calendar },
   { id: 'recursos',     label: 'Recursos',          icon: Download },
   { id: 'anuncios',     label: 'Anuncios',          icon: Megaphone },
 ];
 
-const TITLES = { dashboard:'Dashboard', 'cms-hero':'Hero', 'cms-header':'Header', 'cms-footer':'Footer', 'cms-benefits':'Beneficios', 'cms-seo':'SEO', socials:'Redes Sociales', testimonios:'Testimonios', usuarios:'Usuarios', prospectos:'Prospectos', modulos:'Módulos y Lecciones', eventos:'Eventos', recursos:'Recursos', anuncios:'Anuncios' };
+const TITLES = { dashboard:'Dashboard', cambios:'Cambios pendientes de revisión', 'cms-hero':'Hero', 'cms-header':'Header', 'cms-footer':'Footer', 'cms-benefits':'Beneficios', 'cms-seo':'SEO', socials:'Redes Sociales', testimonios:'Testimonios', usuarios:'Usuarios', prospectos:'Prospectos', modulos:'Módulos y Lecciones', eventos:'Eventos', recursos:'Recursos', anuncios:'Anuncios' };
 
 export default function AdminPage() {
   const { isAdmin, logout } = useAuth();
@@ -767,6 +857,7 @@ export default function AdminPage() {
       case 'testimonios':  return <TestimoniosAdmin />;
       case 'usuarios':     return <UsersAdmin />;
       case 'prospectos':   return <ProspectsAdmin />;
+      case 'cambios':      return <PendingChangesAdmin />;
       case 'modulos':      return <ModulesAdmin />;
       case 'eventos':      return <EventsAdmin />;
       case 'recursos':     return <ResourcesAdmin />;
