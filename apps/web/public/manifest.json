@@ -1,0 +1,38 @@
+{
+  "name": "ADN Puebla - Educación Financiera",
+  "short_name": "ADN Puebla",
+  "description": "Plataforma de capacitación para la libertad financiera",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1a56db",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://riqlkzzqkkiytoonnysj.supabase.co/storage/v1/object/public/public-assets/Logo_ADN.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://riqlkzzqkkiytoonnysj.supabase.co/storage/v1/object/public/public-assets/Logo_ADN.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "finance", "business"],
+  "lang": "es-MX",
+  "shortcuts": [
+    {
+      "name": "Mis módulos",
+      "url": "/modules",
+      "description": "Ver mis módulos de aprendizaje"
+    },
+    {
+      "name": "Dashboard",
+      "url": "/dashboard",
+      "description": "Ver mi progreso"
+    }
+  ]
+}
