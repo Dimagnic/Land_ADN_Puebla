@@ -20,7 +20,7 @@ const CertificatePage = () => {
   const handlePrint = () => window.print();
 
   const nombre = nombreCompleto || profile?.nombre_completo || user?.email || 'Participante';
-  const codigo = codigoDistribuidor || profile?.codigo_distribuidor || '—';
+  const codigo = profile?.codigo_adn || profile?.codigo_distribuidor || '—';
   const patrocinador = nombrePatrocinador || profile?.nombre_patrocinador || 'ADN Puebla';
 
   if (!user) return null;
@@ -64,7 +64,7 @@ const CertificatePage = () => {
               />
               <div className="space-y-2 mb-12">
                 <h1 className="text-sm md:text-base font-bold tracking-[0.2em] text-muted-foreground uppercase">
-                  Grupo Elyón México
+                  ADN Puebla
                 </h1>
                 <h2 className="text-3xl md:text-5xl font-extrabold text-foreground" style={{letterSpacing: '-0.02em'}}>
                   CERTIFICADO DE COMPLETACIÓN
@@ -103,7 +103,7 @@ const CertificatePage = () => {
                 </div>
               </div>
               <div className="mt-16 text-sm text-muted-foreground font-mono">
-                ID de Distribuidor: {codigo}
+                Código ADN: {codigo}
               </div>
             </div>
           </div>
