@@ -5,16 +5,23 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Helmet } from 'react-helmet-async';
-import { Trophy, RotateCcw, TrendingUp } from 'lucide-react';
+import { Trophy, RotateCcw, TrendingUp, RefreshCw } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext.jsx';
+import { getUserEvaluations } from '@/lib/supabaseClient.js';
 
 const MyEvaluationsPage = () => {
+  const { user } = useAuth();
   const [evaluations, setEvaluations] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem('adnPueblaEvaluations') || '[]');
-    setEvaluations(stored.sort((a, b) => new Date(b.date) - new Date(a.date)));
-  }, []);
+    if (!user) return;
+    getUserEvaluations(user.id).then((data) => {
+      setEvaluations(data || []);
+      setLoading(false);
+    });
+  }, [user]);
 
   const filteredEvaluations = evaluations.filter((e) => {
     if (filter === 'passed') return e.passed;
@@ -60,7 +67,6 @@ const MyEvaluationsPage = () => {
                 </div>
               </CardContent>
             </Card>
-
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
@@ -72,7 +78,6 @@ const MyEvaluationsPage = () => {
                 </div>
               </CardContent>
             </Card>
-
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
@@ -93,60 +98,64 @@ const MyEvaluationsPage = () => {
               <CardTitle>Historial de evaluaciones</CardTitle>
             </CardHeader>
             <CardContent>
-              <Tabs value={filter} onValueChange={setFilter}>
-                <TabsList className="mb-6">
-                  <TabsTrigger value="all">Todas</TabsTrigger>
-                  <TabsTrigger value="passed">Aprobadas</TabsTrigger>
-                  <TabsTrigger value="failed">No aprobadas</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value={filter}>
-                  {filteredEvaluations.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Trophy className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">
-                        {filter === 'all'
-                          ? 'Aún no has realizado ninguna evaluación'
-                          : filter === 'passed'
-                          ? 'No tienes evaluaciones aprobadas'
-                          : 'No tienes evaluaciones no aprobadas'}
-                      </p>
-                      <Button asChild className="mt-4">
-                        <Link to="/modules">Ir a módulos</Link>
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {filteredEvaluations.map((evaluation, index) => (
-                        <div
-                          key={index}
-                          className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg border hover:bg-muted transition-colors duration-200"
-                        >
-                          <div className="flex-1 mb-3 sm:mb-0">
-                            <div className="flex items-center space-x-3 mb-2">
-                              <h3 className="font-semibold">{evaluation.moduleName}</h3>
-                              <Badge variant={evaluation.passed ? 'default' : 'destructive'}>
-                                {evaluation.passed ? 'Aprobado' : 'No aprobado'}
-                              </Badge>
+              {loading ? (
+                <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Cargando evaluaciones...</span>
+                </div>
+              ) : (
+                <Tabs value={filter} onValueChange={setFilter}>
+                  <TabsList className="mb-6">
+                    <TabsTrigger value="all">Todas</TabsTrigger>
+                    <TabsTrigger value="passed">Aprobadas</TabsTrigger>
+                    <TabsTrigger value="failed">No aprobadas</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value={filter}>
+                    {filteredEvaluations.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Trophy className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-muted-foreground">
+                          {filter === 'all'
+                            ? 'Aún no has realizado ninguna evaluación'
+                            : filter === 'passed'
+                            ? 'No tienes evaluaciones aprobadas'
+                            : 'No tienes evaluaciones no aprobadas'}
+                        </p>
+                        <Button asChild className="mt-4">
+                          <Link to="/modules">Ir a módulos</Link>
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {filteredEvaluations.map((evaluation, index) => (
+                          <div key={index}
+                            className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg border hover:bg-muted transition-colors duration-200">
+                            <div className="flex-1 mb-3 sm:mb-0">
+                              <div className="flex items-center space-x-3 mb-2">
+                                <h3 className="font-semibold">{evaluation.modules?.title || `Módulo`}</h3>
+                                <Badge variant={evaluation.passed ? 'default' : 'destructive'}>
+                                  {evaluation.passed ? 'Aprobado' : 'No aprobado'}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                                <span>Calificación: {evaluation.score}%</span>
+                                <span>•</span>
+                                <span>{new Date(evaluation.taken_at).toLocaleDateString('es-MX')}</span>
+                              </div>
                             </div>
-                            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                              <span>Calificación: {evaluation.score}%</span>
-                              <span>•</span>
-                              <span>{new Date(evaluation.date).toLocaleDateString('es-MX')}</span>
-                            </div>
+                            <Button asChild variant="outline" size="sm">
+                              <Link to={`/evaluation/${evaluation.module_id}`}>
+                                <RotateCcw className="w-4 h-4 mr-2" />
+                                Retomar
+                              </Link>
+                            </Button>
                           </div>
-                          <Button asChild variant="outline" size="sm">
-                            <Link to={`/evaluation/${evaluation.moduleId}`}>
-                              <RotateCcw className="w-4 h-4 mr-2" />
-                              Retomar
-                            </Link>
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
+              )}
             </CardContent>
           </Card>
         </div>
