@@ -8,6 +8,22 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+
+// ── Función global para notificaciones email ──────────────────
+const notifyEmail = async (type, data) => {
+  try {
+    await fetch('https://riqlkzzqkkiytoonnysj.supabase.co/functions/v1/notify-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ type, data }),
+    });
+  } catch (e) { console.warn('notify-email error:', e); }
+};
+
+
 import {
   Shield, Home, Users, BookOpen, Star, Calendar,
   Download, Megaphone, Settings, LogOut, Search,
@@ -259,6 +275,10 @@ function UsersAdmin() {
 
   const changeStatus = async (id, status) => {
     await supabase.from('profiles').update({ status }).eq('id', id);
+    if (status === 'activo') {
+      const u = users.find(x => x.id === userId);
+      if (u) notifyEmail('alumno_aprobado', { nombre: u.nombre_completo, email: u.email });
+    }
     toast.success(status === 'activo' ? '✅ Usuario aprobado' : status === 'rechazado' ? '❌ Usuario rechazado' : 'Estado actualizado');
     load();
   };
@@ -384,6 +404,8 @@ function ProspectsAdmin() {
       if (!res.ok) throw new Error(result.error || 'Error al invitar');
       setItems(p => p.map(x => x.id === prospect.id ? { ...x, estado: 'convertido', user_id: result.userId } : x));
       toast.dismiss();
+      // Notificar al alumno que fue aprobado
+      notifyEmail('alumno_aprobado', { nombre: prospect.nombre, email: prospect.email });
       toast.success(`✅ Invitación enviada a ${prospect.email}. Recibirá un correo para establecer su contraseña.`);
     } catch (err) {
       toast.dismiss();
