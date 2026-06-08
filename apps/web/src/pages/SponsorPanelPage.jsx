@@ -163,7 +163,7 @@ export default function SponsorPanelPage() {
 
           {/* Título */}
           <div className="mb-8">
-          <button onClick={() => navigate(-1)}
+          <button onClick={() => navigate('/dashboard')}
             className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 text-sm font-medium transition-colors group">
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             Volver
