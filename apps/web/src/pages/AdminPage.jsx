@@ -389,60 +389,71 @@ Esta acción NO se puede deshacer.`)) return;
         </div>
       </div>
       {loading ? <Spinner /> : (
-        <div className="rounded-lg border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted">
-              <tr>{['Nombre', 'Teléfono', 'Código', 'Rol', 'Estado', 'Registro', 'Acciones'].map(h => (
-                <th key={h} className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase">{h}</th>
-              ))}</tr>
-            </thead>
-            <tbody>
-              {filtered.map(u => (
-                <tr key={u.id} className="border-t hover:bg-muted/30">
-                  <td className="px-4 py-3 font-medium">{u.nombre_completo || '—'}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{u.telefono || '—'}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{u.codigo_distribuidor || '—'}</td>
-                  <td className="px-4 py-3">
-                    {currentUserId === u.id ? (
-                      <span className="text-xs font-bold text-primary px-2 py-1 border rounded bg-primary/5">{u.role} <span className="text-muted-foreground">(tú)</span></span>
-                    ) : (
-                      <select value={u.role} onChange={e => changeRole(u.id, e.target.value)} className="text-xs border rounded px-2 py-1 bg-background">
-                        {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                      </select>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${STATUS_COLOR[u.status || 'activo'] || ''}`}>{u.status || 'activo'}</span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">{new Date(u.created_at).toLocaleDateString('es-MX')}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1 flex-wrap">
-                      {u.status === 'pendiente' && (<>
-                        <button onClick={() => changeStatus(u.id, 'activo')} className="px-2 py-1 bg-green-500 hover:bg-green-600 text-white text-xs rounded font-medium">✅ Aprobar</button>
-                        <button onClick={() => changeStatus(u.id, 'rechazado')} className="px-2 py-1 bg-red-500 hover:bg-red-600 text-white text-xs rounded font-medium">❌ Rechazar</button>
-                      </>)}
-                      {u.status === 'bloqueado' && (
-                        <button onClick={() => changeStatus(u.id, 'activo')} className="px-2 py-1 bg-green-500 hover:bg-green-600 text-white text-xs rounded font-medium">🔓 Desbloquear</button>
-                      )}
-                      {u.status === 'rechazado' && (
-                        <button onClick={() => changeStatus(u.id, 'activo')} className="px-2 py-1 bg-green-500 hover:bg-green-600 text-white text-xs rounded font-medium">✅ Aprobar</button>
-                      )}
-                      {(u.status === 'activo' || !u.status) && u.role !== 'admin' && (
-                        <button onClick={() => changeStatus(u.id, 'bloqueado')} className="px-2 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs rounded font-medium">🔒 Bloquear</button>
-                      )}
-                      {currentUserId !== u.id && (
-                        <button onClick={() => deleteUser(u.id, u.nombre_completo, u.email)}
-                          className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-xs rounded font-medium border border-red-200"
-                          title="Eliminar usuario permanentemente">
-                          🗑️
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-3">
+          {filtered.map(u => (
+            <div key={u.id} className="border rounded-xl p-4 bg-background hover:bg-muted/20 transition-colors">
+              {/* Top: nombre + estado + eliminar */}
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm leading-snug">{u.nombre_completo || '—'}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{new Date(u.created_at).toLocaleDateString('es-MX')}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${STATUS_COLOR[u.status || 'activo'] || ''}`}>
+                    {u.status || 'activo'}
+                  </span>
+                  {currentUserId !== u.id && (
+                    <button onClick={() => deleteUser(u.id, u.nombre_completo)}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 transition-colors"
+                      title="Eliminar usuario">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              {/* Info */}
+              <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                <div>
+                  <span className="text-muted-foreground">Teléfono</span>
+                  <p className="font-medium">{u.telefono || '—'}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Código ADN</span>
+                  <p className="font-medium font-mono">{u.codigo_adn || u.codigo_distribuidor || '—'}</p>
+                </div>
+              </div>
+              {/* Rol */}
+              <div className="mb-3">
+                <span className="text-xs text-muted-foreground block mb-1">Rol</span>
+                {currentUserId === u.id ? (
+                  <span className="text-xs font-bold text-primary px-2 py-1 border rounded bg-primary/5">
+                    {u.role} <span className="text-muted-foreground">(tú)</span>
+                  </span>
+                ) : (
+                  <select value={u.role} onChange={e => changeRole(u.id, e.target.value)}
+                    className="text-xs border rounded-md px-2 py-1.5 bg-background w-full max-w-[180px]">
+                    {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                )}
+              </div>
+              {/* Acciones */}
+              <div className="flex gap-2 flex-wrap">
+                {u.status === 'pendiente' && (<>
+                  <button onClick={() => changeStatus(u.id, 'activo')} className="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-xs rounded-lg font-medium">✅ Aprobar</button>
+                  <button onClick={() => changeStatus(u.id, 'rechazado')} className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs rounded-lg font-medium">❌ Rechazar</button>
+                </>)}
+                {u.status === 'bloqueado' && (
+                  <button onClick={() => changeStatus(u.id, 'activo')} className="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-xs rounded-lg font-medium">🔓 Desbloquear</button>
+                )}
+                {u.status === 'rechazado' && (
+                  <button onClick={() => changeStatus(u.id, 'activo')} className="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-xs rounded-lg font-medium">✅ Aprobar</button>
+                )}
+                {(u.status === 'activo' || !u.status) && u.role !== 'admin' && (
+                  <button onClick={() => changeStatus(u.id, 'bloqueado')} className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs rounded-lg font-medium">🔒 Bloquear</button>
+                )}
+              </div>
+            </div>
+          ))}
           {filtered.length === 0 && <p className="text-center text-muted-foreground py-8 text-sm">Sin resultados</p>}
         </div>
       )}
