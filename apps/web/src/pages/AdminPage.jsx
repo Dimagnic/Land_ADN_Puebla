@@ -11,7 +11,8 @@ import { toast } from 'sonner';
 import {
   Shield, Home, Users, BookOpen, Star, Calendar,
   Download, Megaphone, Settings, LogOut, Search,
-  Plus, Trash2, Save, ExternalLink, RefreshCw, Eye, ClipboardCheck, CheckCircle2, XCircle, AlertTriangle
+  Plus, Trash2, Save, ExternalLink, RefreshCw, Eye, ClipboardCheck, CheckCircle2, XCircle, AlertTriangle,
+  HelpCircle, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 const SUPABASE_FUNCTIONS_URL = 'https://riqlkzzqkkiytoonnysj.functions.supabase.co';
@@ -520,6 +521,155 @@ function TestimoniosAdmin() {
   );
 }
 
+
+function QuestionsAdmin({ moduleId, moduleName }) {
+  const [questions, setQuestions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(null);
+  const [expanded, setExpanded] = useState(false);
+
+  const load = () => {
+    supabase.from('questions').select('*')
+      .eq('module_id', moduleId).order('order_num')
+      .then(({ data }) => { setQuestions(data || []); setLoading(false); });
+  };
+
+  useEffect(() => { if (expanded) load(); }, [expanded, moduleId]);
+
+  const addQuestion = async () => {
+    const maxOrder = Math.max(0, ...questions.map(q => q.order_num));
+    const { data } = await supabase.from('questions').insert([{
+      module_id: moduleId,
+      order_num: maxOrder + 1,
+      question: 'Nueva pregunta',
+      options: ['Opción A', 'Opción B', 'Opción C', 'Opción D'],
+      correct: 0,
+      active: true,
+    }]).select().single();
+    if (data) setQuestions(p => [...p, data]);
+    toast.success('Pregunta agregada');
+  };
+
+  const updateQ = (id, field, value) => {
+    setQuestions(p => p.map(q => q.id === id ? { ...q, [field]: value } : q));
+  };
+
+  const updateOption = (qId, optIdx, value) => {
+    setQuestions(p => p.map(q => {
+      if (q.id !== qId) return q;
+      const opts = [...q.options];
+      opts[optIdx] = value;
+      return { ...q, options: opts };
+    }));
+  };
+
+  const saveQuestion = async (q) => {
+    setSaving(q.id);
+    await supabase.from('questions').update({
+      question: q.question,
+      options: q.options,
+      correct: q.correct,
+      active: q.active,
+      order_num: q.order_num,
+    }).eq('id', q.id);
+    setSaving(null);
+    toast.success('Pregunta guardada');
+  };
+
+  const delQuestion = async (id) => {
+    if (!confirm('¿Eliminar esta pregunta?')) return;
+    await supabase.from('questions').delete().eq('id', id);
+    setQuestions(p => p.filter(q => q.id !== id));
+    toast.success('Pregunta eliminada');
+  };
+
+  return (
+    <div className="mt-3 border rounded-lg overflow-hidden">
+      <button
+        onClick={() => setExpanded(p => !p)}
+        className="w-full flex items-center justify-between px-4 py-2.5 bg-muted/50 hover:bg-muted text-sm font-medium transition-colors"
+      >
+        <span className="flex items-center gap-2">
+          <HelpCircle className="w-4 h-4 text-primary" />
+          Preguntas del examen ({questions.length > 0 ? questions.length : '...'})
+        </span>
+        {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      </button>
+
+      {expanded && (
+        <div className="p-4 space-y-4">
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Cargando preguntas...</p>
+          ) : questions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No hay preguntas aún. Agrega la primera.</p>
+          ) : (
+            questions.map((q, qi) => (
+              <div key={q.id} className="border rounded-lg p-4 bg-background space-y-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold text-muted-foreground uppercase">Pregunta {qi + 1}</span>
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-1 text-xs cursor-pointer">
+                      <input type="checkbox" checked={q.active}
+                        onChange={e => updateQ(q.id, 'active', e.target.checked)} />
+                      Activa
+                    </label>
+                    <Button variant="ghost" size="sm" onClick={() => delQuestion(q.id)}
+                      className="text-destructive h-6 text-xs gap-1 px-2">
+                      <Trash2 className="w-3 h-3" /> Eliminar
+                    </Button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Texto de la pregunta</label>
+                  <textarea
+                    value={q.question}
+                    onChange={e => updateQ(q.id, 'question', e.target.value)}
+                    className="w-full border rounded-md px-3 py-2 text-sm bg-background resize-none"
+                    rows={2}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 gap-2">
+                  {(q.options || ['', '', '', '']).map((opt, oi) => (
+                    <div key={oi} className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${
+                      q.correct === oi ? 'border-green-500 bg-green-50' : 'border-border'
+                    }`}>
+                      <input type="radio" name={`correct-${q.id}`}
+                        checked={q.correct === oi}
+                        onChange={() => updateQ(q.id, 'correct', oi)}
+                        title="Marcar como respuesta correcta"
+                        className="text-green-600 flex-shrink-0" />
+                      <input
+                        value={opt}
+                        onChange={e => updateOption(q.id, oi, e.target.value)}
+                        className="flex-1 bg-transparent text-sm outline-none"
+                        placeholder={`Opción ${String.fromCharCode(65 + oi)}`}
+                      />
+                      {q.correct === oi && (
+                        <span className="text-xs text-green-600 font-medium flex-shrink-0">✓ Correcta</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Haz clic en el radio button para marcar cuál es la respuesta correcta.
+                </p>
+
+                <SaveBtn onClick={() => saveQuestion(q)} loading={saving === q.id} label="Guardar pregunta" />
+              </div>
+            ))
+          )}
+
+          <Button size="sm" onClick={addQuestion} className="gap-1 w-full" variant="outline">
+            <Plus className="w-4 h-4" /> Agregar pregunta
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ModulesAdmin() {
   const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -812,6 +962,7 @@ function PendingChangesAdmin() {
                   </Button>
                 </div>
               </div>
+              <QuestionsAdmin moduleId={mod.id} moduleName={mod.title} />
             </div>
           ))}
         </div>
