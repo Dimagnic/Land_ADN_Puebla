@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Helmet } from 'react-helmet-async';
 import { Download, ExternalLink, FileText, Image as ImageIcon, Link as LinkIcon, Video, RefreshCw , ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient.js';
+import { useNavigate } from 'react-router-dom';
 
 const ICON_MAP = {
   document: FileText,
@@ -14,6 +15,7 @@ const ICON_MAP = {
 };
 
 const ResourcesPage = () => {
+  const navigate = useNavigate();
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
 
