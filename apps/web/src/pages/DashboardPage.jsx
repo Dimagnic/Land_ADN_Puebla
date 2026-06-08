@@ -106,7 +106,7 @@ const DashboardPage = () => {
               { to: '/events', icon: Calendar, label: 'Eventos' },
               { to: '/resources', icon: Download, label: 'Recursos' },
               { to: '/profile', icon: User, label: 'Perfil' },
-              ...(isSponsor ? [{ to: '/sponsor-panel', icon: Award, label: 'Mi equipo' }] : []),
+
             ].map(({ to, icon: Icon, label }) => (
               <Link key={to} to={to} onClick={() => setMobileMenu(false)}
                 className="flex items-center gap-3 py-2.5 text-sm text-primary-foreground/80 hover:text-primary-foreground border-b border-primary-foreground/10 last:border-0">
