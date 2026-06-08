@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Helmet } from 'react-helmet-async';
-import { User, Award, Flame, TrendingUp, Trophy, RefreshCw } from 'lucide-react';
+import { User, Award, Flame, TrendingUp, Trophy, RefreshCw , ArrowLeft } from 'lucide-react';
 import { getModules, getUserProgress, getUserEvaluations } from '@/lib/supabaseClient.js';
 
 const LEVELS = [
@@ -74,6 +74,11 @@ const ProfilePage = () => {
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8">
+          <button onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 text-sm font-medium transition-colors group">
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            Volver
+          </button>
             <h1 className="text-3xl md:text-4xl font-bold mb-2" style={{letterSpacing: '-0.02em'}}>
               Mi perfil
             </h1>
