@@ -6,8 +6,10 @@ import AnnouncementBoard from '@/components/AnnouncementBoard.jsx';
 import { Helmet } from 'react-helmet-async';
 import { Calendar, MapPin, Clock, Users, RefreshCw , ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient.js';
+import { useNavigate } from 'react-router-dom';
 
 const EventsPage = () => {
+  const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
