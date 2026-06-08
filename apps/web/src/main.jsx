@@ -5,10 +5,10 @@ import { ThemeProvider } from 'next-themes';
 import App from '@/App';
 import '@/index.css';
 
-// Register Service Worker for PWA
+// Desregistrar service workers viejos que causan errores 503
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  navigator.serviceWorker.getRegistrations().then(registrations => {
+    registrations.forEach(reg => reg.unregister());
   });
 }
 
