@@ -1,5 +1,6 @@
-﻿import React from 'react';
-import { Route, Routes, BrowserRouter as Router, Navigate } from 'react-router-dom';
+import React from 'react';
+import { Route, Routes, BrowserRouter as Router, Navigate, useLocation } from 'react-router-dom';
+import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from './contexts/AuthContext.jsx';
 import ScrollToTop from './components/ScrollToTop.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
@@ -20,37 +21,63 @@ import SponsorPanelPage from './pages/SponsorPanelPage.jsx';
 import CertificatePage from './pages/CertificatePage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
 import { Toaster } from 'sonner';
+
+// Rutas públicas — sin modo oscuro
+const PUBLIC_ROUTES = ['/', '/login', '/registro', '/reset-password'];
+
+function AppContent() {
+  const location = useLocation();
+  const isPublic = PUBLIC_ROUTES.includes(location.pathname);
+
+  const routes = (
+    <div className="flex flex-col min-h-screen">
+      <main className="flex-1">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/registro" element={<RegisterPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+          <Route path="/modules" element={<ProtectedRoute><ModulesPage /></ProtectedRoute>} />
+          <Route path="/module/:moduleId" element={<ProtectedRoute><ModuleDetailPage /></ProtectedRoute>} />
+          <Route path="/lesson/:moduleId/:lessonId" element={<ProtectedRoute><LessonPage /></ProtectedRoute>} />
+          <Route path="/evaluation/:moduleId" element={<ProtectedRoute><EvaluationPage /></ProtectedRoute>} />
+          <Route path="/evaluations" element={<ProtectedRoute><MyEvaluationsPage /></ProtectedRoute>} />
+          <Route path="/resources" element={<ProtectedRoute><ResourcesPage /></ProtectedRoute>} />
+          <Route path="/events" element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+          <Route path="/certificate" element={<ProtectedRoute><CertificatePage /></ProtectedRoute>} />
+          <Route path="/sponsor-panel" element={<ProtectedRoute sponsorOnly><SponsorPanelPage /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute adminOnly><AdminPage /></ProtectedRoute>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+      <Toaster position="top-right" />
+    </div>
+  );
+
+  // Rutas públicas: siempre modo claro, sin ThemeProvider
+  if (isPublic) {
+    return <div className="light">{routes}</div>;
+  }
+
+  // Rutas de plataforma: con modo oscuro disponible
+  return (
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="adn-theme">
+      {routes}
+    </ThemeProvider>
+  );
+}
+
 function App() {
   return (
     <Router>
       <AuthProvider>
         <ScrollToTop />
-        <div className="flex flex-col min-h-screen">
-          <main className="flex-1">
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/registro" element={<RegisterPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
-              <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-              <Route path="/modules" element={<ProtectedRoute><ModulesPage /></ProtectedRoute>} />
-              <Route path="/module/:moduleId" element={<ProtectedRoute><ModuleDetailPage /></ProtectedRoute>} />
-              <Route path="/lesson/:moduleId/:lessonId" element={<ProtectedRoute><LessonPage /></ProtectedRoute>} />
-              <Route path="/evaluation/:moduleId" element={<ProtectedRoute><EvaluationPage /></ProtectedRoute>} />
-              <Route path="/evaluations" element={<ProtectedRoute><MyEvaluationsPage /></ProtectedRoute>} />
-              <Route path="/resources" element={<ProtectedRoute><ResourcesPage /></ProtectedRoute>} />
-              <Route path="/events" element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
-              <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-              <Route path="/certificate" element={<ProtectedRoute><CertificatePage /></ProtectedRoute>} />
-              <Route path="/sponsor-panel" element={<ProtectedRoute sponsorOnly><SponsorPanelPage /></ProtectedRoute>} />
-              <Route path="/admin" element={<ProtectedRoute adminOnly><AdminPage /></ProtectedRoute>} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </main>
-          <Toaster position="top-right" />
-        </div>
+        <AppContent />
       </AuthProvider>
     </Router>
   );
 }
+
 export default App;
