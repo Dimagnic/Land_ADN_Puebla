@@ -37,6 +37,23 @@ const RegisterPage = () => {
       });
   }, [refToken]);
 
+  // Notificar al admin via Edge Function
+  const notifyAdmin = async (nombre, email, telefono, interes) => {
+    try {
+      await fetch('https://riqlkzzqkkiytoonnysj.supabase.co/functions/v1/notify-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          type: 'nuevo_prospecto',
+          data: { nombre, email, telefono, interes },
+        }),
+      });
+    } catch {} // No bloquear el flujo si falla el email
+  };
+
   const handleSubmit = async e => {
     e.preventDefault();
     if (!form.nombre || !form.email || !form.telefono) {
@@ -70,6 +87,8 @@ const RegisterPage = () => {
           .eq('token', refToken);
       }
 
+      // Notificar al admin (no bloqueante)
+      notifyAdmin(form.nombre, form.email, form.telefono, form.interes);
       setSuccess(true);
     } catch {
       toast.error('Error al enviar. Intenta de nuevo.');
