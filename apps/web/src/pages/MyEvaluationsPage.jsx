@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Helmet } from 'react-helmet-async';
-import { Trophy, RotateCcw, TrendingUp, RefreshCw } from 'lucide-react';
+import { Trophy, RotateCcw, TrendingUp, RefreshCw , ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { getUserEvaluations } from '@/lib/supabaseClient.js';
 
 const MyEvaluationsPage = () => {
   const { user } = useAuth();
   const [evaluations, setEvaluations] = useState([]);
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
 
@@ -47,6 +48,11 @@ const MyEvaluationsPage = () => {
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8">
+          <button onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 text-sm font-medium transition-colors group">
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            Volver
+          </button>
             <h1 className="text-3xl md:text-4xl font-bold mb-2" style={{letterSpacing: '-0.02em'}}>
               Mis evaluaciones
             </h1>
