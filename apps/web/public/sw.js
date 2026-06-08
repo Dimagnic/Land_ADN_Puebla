@@ -1,42 +1,37 @@
 const CACHE_NAME = 'adn-puebla-v1';
-const STATIC_ASSETS = [
-  '/',
-  '/dashboard',
-  '/modules',
-];
 
-// Install: cache static assets
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
   );
-  self.skipWaiting();
 });
 
-// Activate: clean old caches
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
-  );
-  self.clients.claim();
-});
+self.addEventListener('fetch', (e) => {
+  // Only handle GET requests for same-origin or static assets
+  if (e.request.method !== 'GET') return;
+  
+  const url = new URL(e.request.url);
+  
+  // Skip Supabase, external APIs, and chrome-extension requests
+  if (url.hostname.includes('supabase.co')) return;
+  if (url.hostname.includes('googleapis.com')) return;
+  if (url.protocol === 'chrome-extension:') return;
+  if (!url.protocol.startsWith('http')) return;
 
-// Fetch: network first, fallback to cache
-self.addEventListener('fetch', (event) => {
-  // Skip non-GET and Supabase API requests
-  if (event.request.method !== 'GET') return;
-  if (event.request.url.includes('supabase.co')) return;
-  if (event.request.url.includes('api.')) return;
-
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+  e.respondWith(
+    caches.match(e.request).then(cached => {
+      const fetchPromise = fetch(e.request).then(response => {
+        // Only cache valid responses
+        if (response && response.status === 200 && response.type === 'basic') {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+        }
         return response;
-      })
-      .catch(() => caches.match(event.request))
+      }).catch(() => cached);
+      return cached || fetchPromise;
+    })
   );
 });
