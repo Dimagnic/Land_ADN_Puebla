@@ -267,11 +267,6 @@ function UsersAdmin() {
       .then(({ data }) => { setUsers(data || []); setLoading(false); });
   }, []);
   useEffect(() => { load(); }, [load]);
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setCurrentUserId(user.id);
-    });
-  }, []);
 
   const changeRole = async (id, role) => {
     // Protect: admin cannot change their own role
@@ -288,7 +283,7 @@ function UsersAdmin() {
   const changeStatus = async (id, status) => {
     await supabase.from('profiles').update({ status }).eq('id', id);
     if (status === 'activo') {
-      const u = users.find(x => x.id === userId);
+      const u = users.find(x => x.id === id);
       if (u) notifyEmail('alumno_aprobado', { nombre: u.nombre_completo, email: u.email });
     }
     toast.success(status === 'activo' ? '✅ Usuario aprobado' : status === 'rechazado' ? '❌ Usuario rechazado' : status === 'bloqueado' ? '🔒 Usuario bloqueado' : 'Estado actualizado');
