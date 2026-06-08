@@ -268,6 +268,12 @@ function UsersAdmin() {
   useEffect(() => { load(); }, [load]);
 
   const changeRole = async (id, role) => {
+    // Protect: admin cannot change their own role
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && user.id === id) {
+      toast.error('⚠️ No puedes cambiar tu propio rol');
+      return;
+    }
     await supabase.from('profiles').update({ role }).eq('id', id);
     toast.success('Rol actualizado');
     load();
@@ -279,7 +285,7 @@ function UsersAdmin() {
       const u = users.find(x => x.id === userId);
       if (u) notifyEmail('alumno_aprobado', { nombre: u.nombre_completo, email: u.email });
     }
-    toast.success(status === 'activo' ? '✅ Usuario aprobado' : status === 'rechazado' ? '❌ Usuario rechazado' : 'Estado actualizado');
+    toast.success(status === 'activo' ? '✅ Usuario aprobado' : status === 'rechazado' ? '❌ Usuario rechazado' : status === 'bloqueado' ? '🔒 Usuario bloqueado' : 'Estado actualizado');
     load();
   };
 
@@ -292,7 +298,7 @@ function UsersAdmin() {
 
   const pendientes = users.filter(u => u.status === 'pendiente').length;
   const ROLES = ['alumno', 'patrocinador', 'admin'];
-  const STATUS_COLOR = { activo: 'bg-green-100 text-green-800', pendiente: 'bg-yellow-100 text-yellow-800', rechazado: 'bg-red-100 text-red-800' };
+  const STATUS_COLOR = { activo: 'bg-green-100 text-green-800', pendiente: 'bg-yellow-100 text-yellow-800', rechazado: 'bg-red-100 text-red-800', bloqueado: 'bg-gray-200 text-gray-700', pendiente_update: 'bg-blue-100 text-blue-800' };
 
   return (
     <div>
@@ -313,7 +319,7 @@ function UsersAdmin() {
             className="flex-1 bg-background border rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary" />
         </div>
         <div className="flex gap-1">
-          {['todos', 'pendiente', 'activo', 'rechazado'].map(f => (
+          {['todos', 'pendiente', 'activo', 'rechazado', 'bloqueado'].map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className={`px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>
               {f}
@@ -336,9 +342,18 @@ function UsersAdmin() {
                   <td className="px-4 py-3 text-muted-foreground">{u.telefono || '—'}</td>
                   <td className="px-4 py-3 text-muted-foreground">{u.codigo_distribuidor || '—'}</td>
                   <td className="px-4 py-3">
-                    <select value={u.role} onChange={e => changeRole(u.id, e.target.value)} className="text-xs border rounded px-2 py-1 bg-background">
-                      {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                    </select>
+                    {(() => {
+                      const [selfId, setSelfId] = React.useState(null);
+                      React.useEffect(() => { supabase.auth.getUser().then(({data:{user}}) => setSelfId(user?.id)); }, []);
+                      const isSelf = selfId === u.id;
+                      return isSelf ? (
+                        <span className="text-xs font-bold text-primary px-2 py-1 border rounded bg-primary/5">{u.role} <span className="text-muted-foreground">(tú)</span></span>
+                      ) : (
+                        <select value={u.role} onChange={e => changeRole(u.id, e.target.value)} className="text-xs border rounded px-2 py-1 bg-background">
+                          {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${STATUS_COLOR[u.status || 'activo'] || ''}`}>{u.status || 'activo'}</span>
@@ -350,11 +365,14 @@ function UsersAdmin() {
                         <button onClick={() => changeStatus(u.id, 'activo')} className="px-2 py-1 bg-green-500 hover:bg-green-600 text-white text-xs rounded font-medium">✅ Aprobar</button>
                         <button onClick={() => changeStatus(u.id, 'rechazado')} className="px-2 py-1 bg-red-500 hover:bg-red-600 text-white text-xs rounded font-medium">❌ Rechazar</button>
                       </>)}
+                      {u.status === 'bloqueado' && (
+                        <button onClick={() => changeStatus(u.id, 'activo')} className="px-2 py-1 bg-green-500 hover:bg-green-600 text-white text-xs rounded font-medium">🔓 Desbloquear</button>
+                      )}
                       {u.status === 'rechazado' && (
                         <button onClick={() => changeStatus(u.id, 'activo')} className="px-2 py-1 bg-green-500 hover:bg-green-600 text-white text-xs rounded font-medium">✅ Aprobar</button>
                       )}
                       {(u.status === 'activo' || !u.status) && u.role !== 'admin' && (
-                        <button onClick={() => changeStatus(u.id, 'rechazado')} className="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 text-xs rounded font-medium">Bloquear</button>
+                        <button onClick={() => changeStatus(u.id, 'bloqueado')} className="px-2 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs rounded font-medium">🔒 Bloquear</button>
                       )}
                     </div>
                   </td>
