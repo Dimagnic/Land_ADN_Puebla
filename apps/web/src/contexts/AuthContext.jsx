@@ -13,7 +13,6 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser]       = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [streak, setStreak]   = useState(0);
 
   async function loadProfile(userId) {
     try {
@@ -21,41 +20,15 @@ export const AuthProvider = ({ children }) => {
         .from('profiles').select('*').eq('id', userId).single();
       if (data) {
         setProfile(data);
-        // Update last_seen_at on every login/session
-        await supabase
-          .from('profiles')
+        // Update last_seen silently — no await, no blocking
+        supabase.from('profiles')
           .update({ last_seen_at: new Date().toISOString() })
-          .eq('id', userId);
-        // Calculate streak from last_seen_at
-        calculateStreak(data.last_seen_at);
+          .eq('id', userId)
+          .then(() => {});
         return data;
       }
     } catch {}
     return null;
-  }
-
-  function calculateStreak(lastSeenAt) {
-    if (!lastSeenAt) { setStreak(1); return; }
-    const last = new Date(lastSeenAt);
-    const now = new Date();
-    const diffDays = Math.floor((now - last) / (1000 * 60 * 60 * 24));
-    if (diffDays <= 1) {
-      // Same day or yesterday — increment streak from localStorage
-      const key = `adn_streak_${profile?.id || 'user'}`;
-      const stored = parseInt(localStorage.getItem(key) || '1');
-      if (diffDays === 0) {
-        setStreak(stored); // same day, keep
-      } else {
-        const newStreak = stored + 1;
-        localStorage.setItem(key, newStreak.toString());
-        setStreak(newStreak);
-      }
-    } else {
-      // More than 1 day gap — reset streak
-      const key = `adn_streak_${profile?.id || 'user'}`;
-      localStorage.setItem(key, '1');
-      setStreak(1);
-    }
   }
 
   useEffect(() => {
@@ -74,7 +47,6 @@ export const AuthProvider = ({ children }) => {
         await loadProfile(session.user.id);
       } else {
         setProfile(null);
-        setStreak(0);
       }
     });
 
@@ -95,15 +67,31 @@ export const AuthProvider = ({ children }) => {
     await supabase.auth.signOut();
     setUser(null);
     setProfile(null);
-    setStreak(0);
+  };
+
+  const getStreak = () => {
+    if (!user) return 0;
+    const key = `adn_streak_${user.id}`;
+    const stored = localStorage.getItem(key);
+    if (!stored) return 1;
+    const { count, lastDate } = JSON.parse(stored);
+    const today = new Date().toDateString();
+    const last = new Date(lastDate).toDateString();
+    if (today === last) return count;
+    const diff = Math.floor((new Date() - new Date(lastDate)) / 86400000);
+    if (diff === 1) {
+      const newCount = (count || 1) + 1;
+      localStorage.setItem(key, JSON.stringify({ count: newCount, lastDate: new Date().toISOString() }));
+      return newCount;
+    }
+    localStorage.setItem(key, JSON.stringify({ count: 1, lastDate: new Date().toISOString() }));
+    return 1;
   };
 
   const updateLastLesson = async (moduleId, lessonId) => {
     if (!user) return;
-    localStorage.setItem(`adnStreak_${user.id}`, JSON.stringify({ moduleId, lessonId }));
+    localStorage.setItem(`adnLastLesson_${user.id}`, JSON.stringify({ moduleId, lessonId }));
   };
-
-  const getStreak = () => streak;
 
   const isAdmin   = profile?.role === 'admin';
   const isSponsor = profile?.role === 'patrocinador' || isAdmin;
@@ -119,7 +107,6 @@ export const AuthProvider = ({ children }) => {
       logout,
       updateLastLesson,
       getStreak,
-      streak,
       nombreCompleto: profile?.nombre_completo,
       codigoDistribuidor: profile?.codigo_adn || profile?.codigo_distribuidor,
       nombrePatrocinador: profile?.nombre_patrocinador,
