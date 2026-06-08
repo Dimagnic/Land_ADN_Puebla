@@ -267,6 +267,11 @@ function UsersAdmin() {
       .then(({ data }) => { setUsers(data || []); setLoading(false); });
   }, []);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setCurrentUserId(user.id);
+    });
+  }, []);
 
   const changeRole = async (id, role) => {
     // Protect: admin cannot change their own role
