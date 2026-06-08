@@ -258,6 +258,7 @@ function SEOAdmin() {
 
 function UsersAdmin() {
   const [users, setUsers] = useState([]);
+  const [currentUserId, setCurrentUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('todos');
@@ -342,18 +343,13 @@ function UsersAdmin() {
                   <td className="px-4 py-3 text-muted-foreground">{u.telefono || '—'}</td>
                   <td className="px-4 py-3 text-muted-foreground">{u.codigo_distribuidor || '—'}</td>
                   <td className="px-4 py-3">
-                    {(() => {
-                      const [selfId, setSelfId] = React.useState(null);
-                      React.useEffect(() => { supabase.auth.getUser().then(({data:{user}}) => setSelfId(user?.id)); }, []);
-                      const isSelf = selfId === u.id;
-                      return isSelf ? (
-                        <span className="text-xs font-bold text-primary px-2 py-1 border rounded bg-primary/5">{u.role} <span className="text-muted-foreground">(tú)</span></span>
-                      ) : (
-                        <select value={u.role} onChange={e => changeRole(u.id, e.target.value)} className="text-xs border rounded px-2 py-1 bg-background">
-                          {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                        </select>
-                      );
-                    })()}
+                    {currentUserId === u.id ? (
+                      <span className="text-xs font-bold text-primary px-2 py-1 border rounded bg-primary/5">{u.role} <span className="text-muted-foreground">(tú)</span></span>
+                    ) : (
+                      <select value={u.role} onChange={e => changeRole(u.id, e.target.value)} className="text-xs border rounded px-2 py-1 bg-background">
+                        {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${STATUS_COLOR[u.status || 'activo'] || ''}`}>{u.status || 'activo'}</span>
