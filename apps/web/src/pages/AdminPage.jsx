@@ -412,6 +412,59 @@ function UsersAdmin() {
           {filtered.length === 0 && <p className="text-center text-muted-foreground py-8 text-sm">Sin resultados</p>}
         </div>
       )}
+
+      {/* Modal crear usuario directo */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-background rounded-xl shadow-2xl p-6 w-full max-w-md border">
+            <h2 className="text-lg font-bold mb-1">Crear usuario directo</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              El usuario recibirá un correo para establecer su contraseña y quedará activo de inmediato en la tabla de Usuarios.
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Nombre completo *</label>
+                <input value={createForm.nombre}
+                  onChange={e => setCreateForm(p => ({...p, nombre: e.target.value}))}
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-background outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Nombre completo" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Email *</label>
+                <input type="email" value={createForm.email}
+                  onChange={e => setCreateForm(p => ({...p, email: e.target.value}))}
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-background outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="correo@ejemplo.com" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Teléfono</label>
+                <input type="tel" value={createForm.telefono}
+                  onChange={e => setCreateForm(p => ({...p, telefono: e.target.value}))}
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-background outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="10 dígitos" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Rol</label>
+                <select value={createForm.role}
+                  onChange={e => setCreateForm(p => ({...p, role: e.target.value}))}
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-background outline-none focus:ring-2 focus:ring-primary">
+                  <option value="alumno">🎓 Alumno</option>
+                  <option value="patrocinador">🤝 Patrocinador</option>
+                  <option value="admin">🛡️ Administrador</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <Button onClick={createUser} disabled={creating} className="flex-1">
+                {creating ? 'Creando...' : '✅ Crear y enviar invitación'}
+              </Button>
+              <Button variant="outline" onClick={() => { setShowCreateModal(false); setCreateForm({ nombre: '', email: '', telefono: '', role: 'alumno' }); }} className="flex-1">
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
