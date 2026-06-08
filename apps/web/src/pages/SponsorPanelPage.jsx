@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Helmet } from 'react-helmet-async';
-import { Users, MessageCircle, AlertCircle, Trophy, TrendingUp, Link2, Copy, Check, RefreshCw, CheckCircle2, XCircle, UserMinus, UserCheck, Edit2, X, Save } from 'lucide-react';
+import { Users, MessageCircle, AlertCircle, Trophy, TrendingUp, Link2, Copy, Check, RefreshCw, CheckCircle2, XCircle, UserMinus, UserCheck, Edit2, X, Save , ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { supabase } from '@/lib/supabaseClient.js';
 import { toast } from 'sonner';
@@ -163,6 +163,11 @@ export default function SponsorPanelPage() {
 
           {/* Título */}
           <div className="mb-8">
+          <button onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 text-sm font-medium transition-colors group">
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            Volver
+          </button>
             <h1 className="text-3xl md:text-4xl font-bold mb-2" style={{letterSpacing:'-0.02em'}}>
               Panel de patrocinador
             </h1>
