@@ -389,22 +389,60 @@ Esta acción NO se puede deshacer.`)) return;
         </div>
       </div>
       {loading ? <Spinner /> : (
-        <div className="space-y-3">
-          {filtered.map(u => (
-            <div key={u.id} className="border rounded-xl p-4 bg-background hover:bg-muted/20 transition-colors">
-              {/* Fila 1: Nombre + Estado + Eliminar */}
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate">{u.nombre_completo || '—'}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{new Date(u.created_at).toLocaleDateString('es-MX')}</p>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${STATUS_COLOR[u.status || 'activo'] || ''}`}>
-                    {u.status || 'activo'}
-                  </span>
-              </div>
-            </div>
-          ))}
+        <div className="rounded-lg border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-muted">
+              <tr>{['Nombre', 'Teléfono', 'Código', 'Rol', 'Estado', 'Registro', 'Acciones'].map(h => (
+                <th key={h} className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase">{h}</th>
+              ))}</tr>
+            </thead>
+            <tbody>
+              {filtered.map(u => (
+                <tr key={u.id} className="border-t hover:bg-muted/30">
+                  <td className="px-4 py-3 font-medium">{u.nombre_completo || '—'}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{u.telefono || '—'}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{u.codigo_distribuidor || '—'}</td>
+                  <td className="px-4 py-3">
+                    {currentUserId === u.id ? (
+                      <span className="text-xs font-bold text-primary px-2 py-1 border rounded bg-primary/5">{u.role} <span className="text-muted-foreground">(tú)</span></span>
+                    ) : (
+                      <select value={u.role} onChange={e => changeRole(u.id, e.target.value)} className="text-xs border rounded px-2 py-1 bg-background">
+                        {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${STATUS_COLOR[u.status || 'activo'] || ''}`}>{u.status || 'activo'}</span>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground text-xs">{new Date(u.created_at).toLocaleDateString('es-MX')}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1 flex-wrap">
+                      {u.status === 'pendiente' && (<>
+                        <button onClick={() => changeStatus(u.id, 'activo')} className="px-2 py-1 bg-green-500 hover:bg-green-600 text-white text-xs rounded font-medium">✅ Aprobar</button>
+                        <button onClick={() => changeStatus(u.id, 'rechazado')} className="px-2 py-1 bg-red-500 hover:bg-red-600 text-white text-xs rounded font-medium">❌ Rechazar</button>
+                      </>)}
+                      {u.status === 'bloqueado' && (
+                        <button onClick={() => changeStatus(u.id, 'activo')} className="px-2 py-1 bg-green-500 hover:bg-green-600 text-white text-xs rounded font-medium">🔓 Desbloquear</button>
+                      )}
+                      {u.status === 'rechazado' && (
+                        <button onClick={() => changeStatus(u.id, 'activo')} className="px-2 py-1 bg-green-500 hover:bg-green-600 text-white text-xs rounded font-medium">✅ Aprobar</button>
+                      )}
+                      {(u.status === 'activo' || !u.status) && u.role !== 'admin' && (
+                        <button onClick={() => changeStatus(u.id, 'bloqueado')} className="px-2 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs rounded font-medium">🔒 Bloquear</button>
+                      )}
+                      {currentUserId !== u.id && (
+                        <button onClick={() => deleteUser(u.id, u.nombre_completo, u.email)}
+                          className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-xs rounded font-medium border border-red-200"
+                          title="Eliminar usuario permanentemente">
+                          🗑️
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
           {filtered.length === 0 && <p className="text-center text-muted-foreground py-8 text-sm">Sin resultados</p>}
         </div>
       )}
@@ -571,44 +609,42 @@ function ProspectsAdmin() {
           className="flex-1 bg-background border rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary" />
       </div>
       {loading ? <Spinner /> : (
-        <div className="rounded-lg border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted">
-              <tr>{['Nombre', 'Email', 'Telefono', 'Interes', 'Estado', 'Fecha', 'Accion'].map(h => (
-                <th key={h} className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase">{h}</th>
-              ))}</tr>
-            </thead>
-            <tbody>
-              {filtered.map(p => (
-                <tr key={p.id} className="border-t hover:bg-muted/30">
-                  <td className="px-4 py-3 font-medium">{p.nombre}</td>
-                  <td className="px-4 py-3">{p.email}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{p.telefono || '-'}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{p.interes || '-'}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${STATE_COLOR[p.estado] || ''}`}>{p.estado}</span>
-                    {p.user_id && <span className="ml-2 text-xs text-green-600">✓ usuario</span>}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(p.created_at).toLocaleDateString('es-MX')}</td>
-                  <td className="px-4 py-3">
-                    <select value={p.estado} onChange={e => updateEstado(p.id, e.target.value)}
-                      className="text-xs border rounded px-2 py-1 bg-background"
-                      disabled={p.estado === 'convertido'}>
-                      {ESTADOS.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Button variant="ghost" size="sm"
-                      onClick={() => deleteProspect(p.id, p.nombre)}
-                      className="text-destructive hover:text-destructive h-7 px-2 gap-1"
-                      title="Eliminar prospecto">
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-3">
+          {filtered.map(p => (
+            <div key={p.id} className="border rounded-xl p-4 bg-background hover:bg-muted/20 transition-colors">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm">{p.nombre}</p>
+                  <p className="text-xs text-muted-foreground truncate">{p.email}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${STATE_COLOR[p.estado] || ''}`}>{p.estado}</span>
+                  {p.user_id && <span className="text-xs text-green-600">✓</span>}
+                  <Button variant="ghost" size="sm" onClick={() => deleteProspect(p.id, p.nombre)}
+                    className="text-destructive h-7 w-7 p-0" title="Eliminar">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                <div><span className="text-muted-foreground">Teléfono</span><p className="font-medium">{p.telefono || '—'}</p></div>
+                <div><span className="text-muted-foreground">Interés</span><p className="font-medium truncate">{p.interes || '—'}</p></div>
+                <div><span className="text-muted-foreground">Fecha</span><p className="font-medium">{new Date(p.created_at).toLocaleDateString('es-MX')}</p></div>
+              </div>
+              <div className="flex items-center gap-2">
+                <select value={p.estado} onChange={e => updateEstado(p.id, e.target.value)}
+                  className="text-xs border rounded-md px-2 py-1.5 bg-background flex-1 max-w-[180px]"
+                  disabled={p.estado === 'convertido'}>
+                  {ESTADOS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                {p.estado !== 'convertido' && (
+                  <Button size="sm" onClick={() => setRoleModal({ prospect: p })} className="text-xs h-8">
+                    Convertir a usuario
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
           {filtered.length === 0 && <p className="text-center text-muted-foreground py-8 text-sm">Sin prospectos</p>}
         </div>
       )}
@@ -1129,6 +1165,7 @@ export default function AdminPage() {
   const { isAdmin, logout } = useAuth();
   const navigate = useNavigate();
   const [active, setActive] = useState('dashboard');
+  const [mobileNav, setMobileNav] = useState(false);
 
   const renderSection = () => {
     switch (active) {
@@ -1153,7 +1190,7 @@ export default function AdminPage() {
 
   return (
     <div className="fixed inset-0 z-50 flex bg-background">
-      <aside className="w-56 bg-card border-r flex flex-col overflow-y-auto flex-shrink-0">
+      <aside className="hidden md:flex w-56 bg-card border-r flex-col overflow-y-auto flex-shrink-0">
         <div className="p-4 border-b flex items-center gap-2">
           <Shield className="w-5 h-5 text-primary" />
           <span className="font-bold text-sm">Panel Admin</span>
@@ -1174,10 +1211,38 @@ export default function AdminPage() {
           <Button variant="ghost" size="sm" onClick={logout} className="w-full justify-start gap-2 text-muted-foreground"><LogOut className="w-4 h-4" />Cerrar sesión</Button>
         </div>
       </aside>
+      {/* Mobile nav overlay */}
+      {mobileNav && (
+        <div className="md:hidden fixed inset-0 z-[100] flex">
+          <div className="w-64 bg-card border-r flex flex-col overflow-y-auto shadow-xl">
+            <div className="p-4 border-b flex items-center justify-between">
+              <span className="font-bold text-sm flex items-center gap-2"><Shield className="w-4 h-4 text-primary" />Panel Admin</span>
+              <button onClick={() => setMobileNav(false)} className="p-1 rounded hover:bg-muted">✕</button>
+            </div>
+            <nav className="p-2 flex-1">
+              {NAV.map(item => (
+                <div key={item.id}>
+                  {item.section && <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-2 pt-4 pb-1">{item.section}</p>}
+                  <button onClick={() => { setActive(item.id); setMobileNav(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors mb-0.5 ${active === item.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
+                    <item.icon className="w-4 h-4 flex-shrink-0" />{item.label}
+                  </button>
+                </div>
+              ))}
+            </nav>
+          </div>
+          <div className="flex-1 bg-black/50" onClick={() => setMobileNav(false)} />
+        </div>
+      )}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="border-b px-6 py-4 flex items-center justify-between bg-card flex-shrink-0">
-          <h1 className="text-lg font-semibold">{TITLES[active]}</h1>
-          <Badge variant="outline" className="gap-1"><Shield className="w-3 h-3" />Admin</Badge>
+        <header className="border-b px-4 md:px-6 py-3 flex items-center justify-between bg-card flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <button className="md:hidden p-1.5 rounded-md hover:bg-muted" onClick={() => setMobileNav(p => !p)}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </button>
+            <h1 className="text-base md:text-lg font-semibold">{TITLES[active]}</h1>
+          </div>
+          <Badge variant="outline" className="gap-1 text-xs"><Shield className="w-3 h-3" />Admin</Badge>
         </header>
         <main className="flex-1 overflow-y-auto p-6">{renderSection()}</main>
       </div>
