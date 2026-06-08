@@ -443,6 +443,14 @@ function ProspectsAdmin() {
     toast.success('Estado actualizado');
   };
 
+  const deleteProspect = async (id, nombre) => {
+    if (!confirm(`¿Eliminar el prospecto "${nombre}"? Esta acción no se puede deshacer.`)) return;
+    const { error } = await supabase.from('prospects').delete().eq('id', id);
+    if (error) { toast.error('Error al eliminar'); return; }
+    setItems(p => p.filter(x => x.id !== id));
+    toast.success(`Prospecto "${nombre}" eliminado`);
+  };
+
   const filtered = items.filter(u =>
     (u.nombre || '').toLowerCase().includes(search.toLowerCase()) ||
     (u.email || '').toLowerCase().includes(search.toLowerCase())
@@ -506,6 +514,14 @@ function ProspectsAdmin() {
                       disabled={p.estado === 'convertido'}>
                       {ESTADOS.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Button variant="ghost" size="sm"
+                      onClick={() => deleteProspect(p.id, p.nombre)}
+                      className="text-destructive hover:text-destructive h-7 px-2 gap-1"
+                      title="Eliminar prospecto">
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
                   </td>
                 </tr>
               ))}
