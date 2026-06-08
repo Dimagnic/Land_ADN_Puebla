@@ -259,6 +259,9 @@ function SEOAdmin() {
 function UsersAdmin() {
   const [users, setUsers] = useState([]);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({ nombre: '', email: '', telefono: '', role: 'alumno' });
+  const [creating, setCreating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('todos');
@@ -301,6 +304,33 @@ function UsersAdmin() {
   const ROLES = ['alumno', 'patrocinador', 'admin'];
   const STATUS_COLOR = { activo: 'bg-green-100 text-green-800', pendiente: 'bg-yellow-100 text-yellow-800', rechazado: 'bg-red-100 text-red-800', bloqueado: 'bg-gray-200 text-gray-700', pendiente_update: 'bg-blue-100 text-blue-800' };
 
+  const createUser = async () => {
+    if (!createForm.nombre || !createForm.email) { toast.error('Nombre y email son requeridos'); return; }
+    setCreating(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/invite-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+        body: JSON.stringify({
+          email: createForm.email,
+          nombre: createForm.nombre,
+          telefono: createForm.telefono,
+          role: createForm.role,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Error al crear usuario');
+      toast.success(`✅ Usuario creado. ${createForm.nombre} recibirá un correo para establecer su contraseña.`);
+      setShowCreateModal(false);
+      setCreateForm({ nombre: '', email: '', telefono: '', role: 'alumno' });
+      load();
+    } catch (err) {
+      toast.error('Error: ' + err.message);
+    }
+    setCreating(false);
+  };
+
   return (
     <div>
       {pendientes > 0 && (
@@ -319,6 +349,9 @@ function UsersAdmin() {
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre o código..."
             className="flex-1 bg-background border rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary" />
         </div>
+        <Button onClick={() => setShowCreateModal(true)} size="sm" className="gap-1 flex-shrink-0">
+          <Plus className="w-4 h-4" /> Crear usuario
+        </Button>
         <div className="flex gap-1">
           {['todos', 'pendiente', 'activo', 'rechazado', 'bloqueado'].map(f => (
             <button key={f} onClick={() => setFilter(f)}
