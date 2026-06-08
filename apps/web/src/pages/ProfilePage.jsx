@@ -80,7 +80,7 @@ const ProfilePage = () => {
             <p className="text-muted-foreground text-lg">Tu progreso y logros en ADN Puebla</p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
             <Card className="lg:col-span-2">
               <CardHeader><CardTitle>Información personal</CardTitle></CardHeader>
               <CardContent>
@@ -94,7 +94,7 @@ const ProfilePage = () => {
                       <p className="text-sm text-muted-foreground">{user?.email}</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 pt-4 border-t">
                     {profile?.codigo_adn && (
                       <div>
                         <p className="text-sm text-muted-foreground mb-1">Código ADN</p>
@@ -150,7 +150,7 @@ const ProfilePage = () => {
                     Completa y aprueba módulos para ganar insignias
                   </p>
                 ) : (
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                     {stats.badges.map((moduleId) => (
                       <div key={moduleId}
                         className="aspect-square bg-primary/10 rounded-xl flex flex-col items-center justify-center">
