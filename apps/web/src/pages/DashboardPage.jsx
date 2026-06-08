@@ -82,6 +82,7 @@ const DashboardPage = () => {
                   <Shield className="w-4 h-4" /> Admin
                 </Button>
               )}
+              <ThemeToggle className="text-primary-foreground/70 hover:bg-primary-foreground/10" />
               <Button onClick={handleLogout} variant="ghost" size="sm"
                 className="text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10 gap-1.5">
                 <LogOut className="w-4 h-4" /> Salir
