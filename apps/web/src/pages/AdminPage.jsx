@@ -1225,22 +1225,37 @@ export default function AdminPage() {
       {/* Mobile nav overlay */}
       {mobileNav && (
         <div className="md:hidden fixed inset-0 z-[100] flex">
-          <div className="w-64 bg-card border-r flex flex-col overflow-y-auto shadow-xl">
-            <div className="p-4 border-b flex items-center justify-between">
-              <span className="font-bold text-sm flex items-center gap-2"><Shield className="w-4 h-4 text-primary" />Panel Admin</span>
-              <button onClick={() => setMobileNav(false)} className="p-1 rounded hover:bg-muted">✕</button>
+          <div className="w-72 bg-card border-r flex flex-col shadow-xl" style={{maxHeight:'100dvh'}}>
+            <div className="p-4 border-b flex items-center justify-between flex-shrink-0">
+              <span className="font-bold text-sm flex items-center gap-2">
+                <Shield className="w-4 h-4 text-primary" />Panel Admin
+              </span>
+              <button onClick={() => setMobileNav(false)}
+                className="p-2 rounded-lg hover:bg-muted text-muted-foreground">
+                <XCircle className="w-5 h-5" />
+              </button>
             </div>
-            <nav className="p-2 flex-1">
+            <nav className="p-2 flex-1 overflow-y-auto">
               {NAV.map(item => (
                 <div key={item.id}>
                   {item.section && <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-2 pt-4 pb-1">{item.section}</p>}
                   <button onClick={() => { setActive(item.id); setMobileNav(false); }}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors mb-0.5 ${active === item.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
+                    className={`w-full flex items-center gap-2 px-3 py-3 rounded-md text-sm font-medium transition-colors mb-0.5 ${active === item.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
                     <item.icon className="w-4 h-4 flex-shrink-0" />{item.label}
                   </button>
                 </div>
               ))}
             </nav>
+            <div className="p-2 border-t flex-shrink-0 space-y-1">
+              <Button variant="ghost" size="sm" onClick={() => { navigate('/'); setMobileNav(false); }}
+                className="w-full justify-start gap-2 text-muted-foreground py-3">
+                <ExternalLink className="w-4 h-4" />Ver sitio
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => { logout(); setMobileNav(false); }}
+                className="w-full justify-start gap-2 text-destructive hover:text-destructive py-3">
+                <LogOut className="w-4 h-4" />Cerrar sesión
+              </Button>
+            </div>
           </div>
           <div className="flex-1 bg-black/50" onClick={() => setMobileNav(false)} />
         </div>
@@ -1255,7 +1270,7 @@ export default function AdminPage() {
           </div>
           <Badge variant="outline" className="gap-1 text-xs"><Shield className="w-3 h-3" />Admin</Badge>
         </header>
-        <main className="flex-1 overflow-y-auto p-6">{renderSection()}</main>
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">{renderSection()}</main>
       </div>
     </div>
   );
