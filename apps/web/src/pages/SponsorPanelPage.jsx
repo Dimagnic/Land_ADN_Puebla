@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +15,7 @@ const STATUS_LABEL = { activo: 'Activo', pendiente: 'Pendiente', rechazado: 'Rec
 const STATUS_COLOR = { activo: 'bg-green-100 text-green-800', pendiente: 'bg-yellow-100 text-yellow-800', rechazado: 'bg-red-100 text-red-800', pendiente_update: 'bg-blue-100 text-blue-800' };
 
 export default function SponsorPanelPage() {
+  const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [students, setStudents]   = useState([]);
   const [loading, setLoading]     = useState(true);
