@@ -13,6 +13,7 @@ import ThemeToggle from '@/components/ThemeToggle.jsx';
 const DashboardPage = () => {
   const { user, profile, isAdmin, logout, getStreak } = useAuth();
   const navigate = useNavigate();
+  const [mobileMenu, setMobileMenu] = React.useState(false);
   const [stats, setStats] = useState({ modulesCompleted: 0, lessonsViewed: 0, evaluationsPassed: 0, overallProgress: 0 });
   const [nextModule, setNextModule] = useState(null);
 
@@ -54,11 +55,11 @@ const DashboardPage = () => {
       {/* Header de la plataforma */}
       <header className="sticky top-0 z-50 bg-primary text-primary-foreground shadow-md">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-6">
+          <div className="flex items-center justify-between h-14 md:h-16">
+            <div className="flex items-center gap-4">
               <Link to="/dashboard">
                 <img src="https://horizons-cdn.hostinger.com/1060bfed-4778-45d1-8346-df361739fa1c/cc2ce7bfd135fd33083b232d71ee36cb.png"
-                  alt="ADN Puebla" className="h-10 object-contain brightness-0 invert" />
+                  alt="ADN Puebla" className="h-8 md:h-10 object-contain brightness-0 invert" />
               </Link>
               <nav className="hidden md:flex items-center gap-1">
                 <Link to="/modules" className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 transition-colors">
@@ -75,21 +76,45 @@ const DashboardPage = () => {
                 </Link>
               </nav>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               {isAdmin && (
                 <Button onClick={() => navigate('/admin')} size="sm"
-                  className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold gap-1.5">
-                  <Shield className="w-4 h-4" /> Admin
+                  className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold gap-1 text-xs md:text-sm px-2 md:px-3">
+                  <Shield className="w-3.5 h-3.5 md:w-4 md:h-4" /> <span className="hidden sm:inline">Admin</span>
                 </Button>
               )}
               <ThemeToggle className="text-primary-foreground/70 hover:bg-primary-foreground/10" />
               <Button onClick={handleLogout} variant="ghost" size="sm"
-                className="text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10 gap-1.5">
-                <LogOut className="w-4 h-4" /> Salir
+                className="text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10 gap-1 px-2">
+                <LogOut className="w-4 h-4" /> <span className="hidden sm:inline">Salir</span>
               </Button>
+              {/* Hamburger mobile */}
+              <button className="md:hidden p-1.5 rounded-md hover:bg-primary-foreground/10 ml-1"
+                onClick={() => setMobileMenu(p => !p)}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
+        {/* Mobile menu dropdown */}
+        {mobileMenu && (
+          <div className="md:hidden bg-primary border-t border-primary-foreground/20 px-4 pb-3">
+            {[
+              { to: '/modules', icon: BookMarked, label: 'Módulos' },
+              { to: '/events', icon: Calendar, label: 'Eventos' },
+              { to: '/resources', icon: Download, label: 'Recursos' },
+              { to: '/profile', icon: User, label: 'Perfil' },
+              ...(isSponsor ? [{ to: '/sponsor-panel', icon: Award, label: 'Mi equipo' }] : []),
+            ].map(({ to, icon: Icon, label }) => (
+              <Link key={to} to={to} onClick={() => setMobileMenu(false)}
+                className="flex items-center gap-3 py-2.5 text-sm text-primary-foreground/80 hover:text-primary-foreground border-b border-primary-foreground/10 last:border-0">
+                <Icon className="w-4 h-4" /> {label}
+              </Link>
+            ))}
+          </div>
+        )}
       </header>
 
       <div className="min-h-screen bg-background">
