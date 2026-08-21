@@ -40,7 +40,7 @@ const RegisterPage = () => {
   // Notificar al admin via Edge Function
   const notifyAdmin = async (nombre, email, telefono, interes) => {
     try {
-      await fetch('https://riqlkzzqkkiytoonnysj.supabase.co/functions/v1/notify-email', {
+      await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -80,11 +80,7 @@ const RegisterPage = () => {
 
       // Si viene de enlace de patrocinador, incrementar el contador de usos
       if (refToken && sponsorInfo) {
-        await supabase.rpc('generate_sponsor_token', { p_sponsor_id: sponsorInfo.sponsorId });
-        await supabase
-          .from('sponsor_links')
-          .update({ uses: supabase.raw('uses + 1') })
-          .eq('token', refToken);
+        await supabase.rpc('increment_sponsor_link_uses', { p_token: refToken });
       }
 
       // Notificar al admin (no bloqueante)

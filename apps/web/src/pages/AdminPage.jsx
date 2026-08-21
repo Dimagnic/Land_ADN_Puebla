@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 // ── Función global para notificaciones email ──────────────────
 const notifyEmail = async (type, data) => {
   try {
-    await fetch('https://riqlkzzqkkiytoonnysj.supabase.co/functions/v1/notify-email', {
+    await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-email`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

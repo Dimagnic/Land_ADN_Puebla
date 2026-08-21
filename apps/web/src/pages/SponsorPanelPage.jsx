@@ -119,19 +119,40 @@ export default function SponsorPanelPage() {
 
   const saveEdit = async (student) => {
     setSaving(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        nombre_completo: editForm.nombre_completo,
-        telefono: editForm.telefono,
-        status: 'pendiente_update',
-      })
-      .eq('id', student.id);
-    setSaving(false);
-    if (error) { toast.error('Error al guardar'); return; }
-    toast.success('Cambios enviados. El administrador los revisará antes de aplicarlos.');
-    setEditingId(null);
-    loadStudents();
+    try {
+      // Registrar cada campo modificado en el historial de cambios
+      // pendientes; el valor real del perfil NO se toca todavía —
+      // el admin debe aprobar cada cambio desde su panel.
+      const changes = [];
+      if (editForm.nombre_completo !== (student.nombre_completo || '')) {
+        changes.push({ field_name: 'nombre_completo', old_value: student.nombre_completo || '', new_value: editForm.nombre_completo });
+      }
+      if (editForm.telefono !== (student.telefono || '')) {
+        changes.push({ field_name: 'telefono', old_value: student.telefono || '', new_value: editForm.telefono });
+      }
+
+      if (changes.length === 0) {
+        setEditingId(null);
+        return;
+      }
+
+      const { error: logError } = await supabase.from('profile_change_log').insert(
+        changes.map(c => ({ profile_id: student.id, changed_by: user.id, ...c, status: 'pendiente' }))
+      );
+      if (logError) throw logError;
+
+      const { error: statusError } = await supabase
+        .from('profiles').update({ status: 'pendiente_update' }).eq('id', student.id);
+      if (statusError) throw statusError;
+
+      toast.success('Cambios enviados. El administrador los revisará antes de aplicarlos.');
+      setEditingId(null);
+      loadStudents();
+    } catch {
+      toast.error('Error al guardar');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // ── Filtros ───────────────────────────────────────────────────
