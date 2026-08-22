@@ -59,7 +59,7 @@ const DashboardPage = () => {
             <div className="flex items-center gap-4">
               <Link to="/dashboard">
                 <img src="https://horizons-cdn.hostinger.com/1060bfed-4778-45d1-8346-df361739fa1c/cc2ce7bfd135fd33083b232d71ee36cb.png"
-                  alt="ADN Puebla" className="h-8 md:h-10 object-contain brightness-0 invert" />
+                  alt="ADN Puebla" className="h-8 md:h-10 object-contain" />
               </Link>
               <nav className="hidden md:flex items-center gap-1">
                 <Link to="/modules" className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 transition-colors">

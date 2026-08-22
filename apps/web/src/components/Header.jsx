@@ -44,7 +44,7 @@ const Header = ({ cmsData }) => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <Link to="/" onClick={() => window.scrollTo(0, 0)} className="flex items-center space-x-2">
-              <img src={logoUrl} alt="ADN Puebla Logo" className="h-[80px] md:h-[120px] w-auto object-contain brightness-0 invert transition-all duration-300" />
+              <img src={logoUrl} alt="ADN Puebla Logo" className="h-[80px] md:h-[120px] w-auto object-contain transition-all duration-300" />
             </Link>
 
             {/* Desktop Nav */}
