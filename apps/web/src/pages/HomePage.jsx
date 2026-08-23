@@ -79,7 +79,7 @@ const HomePage = () => {
           </div>
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-12">
             <motion.div className="flex flex-col items-center text-center max-w-4xl mx-auto" initial="hidden" animate="visible" variants={stagger}>
-              <motion.img variants={fadeInUp} src={hero.logo_url} alt="ADN Puebla" className="h-[180px] md:h-[260px] w-auto object-contain mb-8 drop-shadow-2xl" />
+              <motion.img variants={fadeInUp} src={hero.logo_url} alt="ADN Puebla" className="h-[180px] md:h-[260px] w-auto object-contain mb-8 brightness-0 invert drop-shadow-2xl" />
               <motion.h1 variants={fadeInUp} className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6 text-balance drop-shadow-md" style={{ letterSpacing: '-0.02em' }}>
                 {hero.title}
               </motion.h1>

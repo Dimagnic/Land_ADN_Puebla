@@ -19,6 +19,11 @@ Plataforma educativa (landing + LMS) para ADN Puebla. Monorepo con dos apps:
       el esquema base no incluía pero que el frontend necesita
       (`questions`, `sponsor_links`, `profile_change_log`, `profiles.status`,
       etc.). Ver el encabezado del archivo para el detalle completo.
+   3. `supabase-migration-002-teachers-groups-audit.sql` — agrega el rol
+      `profesor`, la tabla `groups` (grupos/cohortes), `profiles.group_id`
+      y `audit_log` (bitácora inmutable de acciones sensibles, visible solo
+      para admin). Es indispensable: `AdminPage.jsx` (gestión de grupos) y
+      `TeacherPanelPage.jsx` (panel del profesor) ya dependen de estas tablas.
 
 2. **Crea tu usuario admin**: Authentication → Users → Add User en Supabase,
    luego en el SQL Editor:
@@ -29,9 +34,11 @@ Plataforma educativa (landing + LMS) para ADN Puebla. Monorepo con dos apps:
 3. **Variables de entorno**: copia `apps/web/.env.example` a `apps/web/.env`
    y complétalo con los datos de tu proyecto (Settings → API):
    ```
-   VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
-   VITE_SUPABASE_ANON_KEY=tu-clave-anonima
+   VITE_SUPABASE_URL=https://riqlkzzqkkiytoonnysj.supabase.co
+   VITE_SUPABASE_ANON_KEY=tu-clave-anonima-publica
    ```
+   La clave anónima (`anon public`) la obtienes en Supabase → Settings → API
+   de ese proyecto. Nunca uses la `service_role` key en el frontend.
 
 4. **Función de notificación por correo (opcional)**: el registro de
    prospectos intenta llamar a una Edge Function `notify-email` en
@@ -48,6 +55,25 @@ Plataforma educativa (landing + LMS) para ADN Puebla. Monorepo con dos apps:
    npm run dev        # web + api en paralelo
    npm run dev:web     # solo frontend
    ```
+
+## Despliegue en Vercel
+
+Este repo es un monorepo (npm workspaces) con `vercel.json` en la raíz ya
+configurado para construir solo `apps/web`:
+
+1. Importa el repositorio de GitHub en Vercel (Root Directory = raíz del
+   repo, **no** cambies a `apps/web`; `vercel.json` ya apunta ahí).
+2. En Project Settings → Environment Variables agrega:
+   - `VITE_SUPABASE_URL` = `https://riqlkzzqkkiytoonnysj.supabase.co`
+   - `VITE_SUPABASE_ANON_KEY` = tu clave `anon public` de Supabase
+3. Deploy. Vercel corre `npm install` en la raíz y luego `npm run build`
+   (que a su vez ejecuta `vite build` dentro de `apps/web`), publicando
+   `apps/web/dist`.
+
+`apps/api` (Express, solo `/health` por ahora) no se despliega en Vercel;
+el frontend habla directo con Supabase. Si más adelante necesitas ese
+servidor, despliégalo aparte (Railway, Render, Fly.io, etc.) o conviértelo
+en una Vercel Function.
 
 ## Estructura
 

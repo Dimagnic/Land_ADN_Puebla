@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 
-const ProtectedRoute = ({ children, sponsorOnly = false, adminOnly = false }) => {
+const ProtectedRoute = ({ children, sponsorOnly = false, adminOnly = false, teacherOnly = false }) => {
   const { user, profile, loading } = useAuth();
   const [timedOut, setTimedOut] = useState(false);
 
@@ -61,6 +61,7 @@ const ProtectedRoute = ({ children, sponsorOnly = false, adminOnly = false }) =>
 
   if (adminOnly && profile?.role !== 'admin') return <Navigate to="/dashboard" replace />;
   if (sponsorOnly && !['patrocinador', 'admin'].includes(profile?.role)) return <Navigate to="/dashboard" replace />;
+  if (teacherOnly && !['profesor', 'admin'].includes(profile?.role)) return <Navigate to="/dashboard" replace />;
 
   return children;
 };

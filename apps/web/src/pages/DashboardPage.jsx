@@ -11,7 +11,7 @@ import { getUserProgress, getUserEvaluations, getModules } from '@/lib/supabaseC
 import ThemeToggle from '@/components/ThemeToggle.jsx';
 
 const DashboardPage = () => {
-  const { user, profile, isAdmin, logout, getStreak } = useAuth();
+  const { user, profile, isAdmin, isSponsor, isTeacher, logout, getStreak } = useAuth();
   const navigate = useNavigate();
   const [mobileMenu, setMobileMenu] = React.useState(false);
   const [stats, setStats] = useState({ modulesCompleted: 0, lessonsViewed: 0, evaluationsPassed: 0, overallProgress: 0 });
@@ -59,7 +59,7 @@ const DashboardPage = () => {
             <div className="flex items-center gap-4">
               <Link to="/dashboard">
                 <img src="https://horizons-cdn.hostinger.com/1060bfed-4778-45d1-8346-df361739fa1c/cc2ce7bfd135fd33083b232d71ee36cb.png"
-                  alt="ADN Puebla" className="h-8 md:h-10 object-contain" />
+                  alt="ADN Puebla" className="h-8 md:h-10 object-contain brightness-0 invert" />
               </Link>
               <nav className="hidden md:flex items-center gap-1">
                 <Link to="/modules" className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 transition-colors">
@@ -81,6 +81,18 @@ const DashboardPage = () => {
                 <Button onClick={() => navigate('/admin')} size="sm"
                   className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold gap-1 text-xs md:text-sm px-2 md:px-3">
                   <Shield className="w-3.5 h-3.5 md:w-4 md:h-4" /> <span className="hidden sm:inline">Admin</span>
+                </Button>
+              )}
+              {isSponsor && (
+                <Button onClick={() => navigate('/sponsor-panel')} size="sm" variant="outline"
+                  className="gap-1 text-xs md:text-sm px-2 md:px-3">
+                  <span className="hidden sm:inline">Panel Patrocinador</span><span className="sm:hidden">Patroc.</span>
+                </Button>
+              )}
+              {isTeacher && (
+                <Button onClick={() => navigate('/teacher-panel')} size="sm" variant="outline"
+                  className="gap-1 text-xs md:text-sm px-2 md:px-3">
+                  <span className="hidden sm:inline">Panel Profesor</span><span className="sm:hidden">Prof.</span>
                 </Button>
               )}
               <ThemeToggle className="text-primary-foreground/70 hover:bg-primary-foreground/10" />

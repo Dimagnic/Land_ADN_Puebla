@@ -28,10 +28,10 @@ import {
   Shield, Home, Users, BookOpen, Star, Calendar,
   Download, Megaphone, Settings, LogOut, Search,
   Plus, Trash2, Save, ExternalLink, RefreshCw, Eye, ClipboardCheck, CheckCircle2, XCircle, AlertTriangle,
-  HelpCircle, ChevronDown, ChevronUp
+  HelpCircle, ChevronDown, ChevronUp, GraduationCap, History
 } from 'lucide-react';
 
-const SUPABASE_FUNCTIONS_URL = 'https://riqlkzzqkkiytoonnysj.functions.supabase.co';
+const SUPABASE_FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 const inputCls = 'w-full bg-background border rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary';
 
 function Field({ label, value, onChange, textarea, type = 'text', placeholder }) {
@@ -258,6 +258,7 @@ function SEOAdmin() {
 
 function UsersAdmin() {
   const [users, setUsers] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState({ nombre: '', email: '', telefono: '', role: 'alumno' });
@@ -268,8 +269,17 @@ function UsersAdmin() {
   const load = useCallback(() => {
     supabase.from('profiles').select('*').order('created_at', { ascending: false })
       .then(({ data }) => { setUsers(data || []); setLoading(false); });
+    supabase.from('groups').select('id, name').eq('active', true).order('name')
+      .then(({ data }) => setGroups(data || []));
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  const changeGroup = async (id, groupId) => {
+    const { error } = await supabase.from('profiles').update({ group_id: groupId || null }).eq('id', id);
+    if (error) { toast.error('Error al asignar grupo'); return; }
+    toast.success('Grupo actualizado');
+    load();
+  };
 
   const changeRole = async (id, role) => {
     // Protect: admin cannot change their own role
@@ -328,7 +338,7 @@ Esta acción NO se puede deshacer.`)) return;
   };
 
   const pendientes = users.filter(u => u.status === 'pendiente').length;
-  const ROLES = ['alumno', 'patrocinador', 'admin'];
+  const ROLES = ['alumno', 'patrocinador', 'profesor', 'admin'];
   const STATUS_COLOR = { activo: 'bg-green-100 text-green-800', pendiente: 'bg-yellow-100 text-yellow-800', rechazado: 'bg-red-100 text-red-800', bloqueado: 'bg-gray-200 text-gray-700', pendiente_update: 'bg-blue-100 text-blue-800' };
 
   const createUser = async () => {
@@ -436,6 +446,15 @@ Esta acción NO se puede deshacer.`)) return;
                   </select>
                 )}
               </div>
+              {/* Grupo */}
+              <div className="mb-3">
+                <span className="text-xs text-muted-foreground block mb-1">Grupo</span>
+                <select value={u.group_id || ''} onChange={e => changeGroup(u.id, e.target.value)}
+                  className="text-xs border rounded-md px-2 py-1.5 bg-background w-full max-w-[180px]">
+                  <option value="">Sin grupo</option>
+                  {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                </select>
+              </div>
               {/* Acciones */}
               <div className="flex gap-2 flex-wrap">
                 {u.status === 'pendiente' && (<>
@@ -511,6 +530,147 @@ Esta acción NO se puede deshacer.`)) return;
         </div>
       )}
     </div>
+  );
+}
+
+function GroupsAdmin() {
+  const [groups, setGroups] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newName, setNewName] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    Promise.all([
+      supabase.from('groups').select('*').order('created_at', { ascending: false }),
+      supabase.from('profiles').select('id, nombre_completo').eq('role', 'profesor'),
+    ]).then(([g, t]) => {
+      setGroups(g.data || []);
+      setTeachers(t.data || []);
+      setLoading(false);
+    });
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const createGroup = async () => {
+    if (!newName.trim()) { toast.error('Ponle un nombre al grupo'); return; }
+    setCreating(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from('groups').insert([{ name: newName.trim(), created_by: user?.id }]);
+    setCreating(false);
+    if (error) { toast.error('Error al crear el grupo'); return; }
+    toast.success('Grupo creado');
+    setNewName('');
+    load();
+  };
+
+  const assignTeacher = async (groupId, teacherId) => {
+    const { error } = await supabase.from('groups').update({ teacher_id: teacherId || null }).eq('id', groupId);
+    if (error) { toast.error('Error al asignar profesor'); return; }
+    toast.success('Profesor asignado');
+    load();
+  };
+
+  const toggleActive = async (group) => {
+    await supabase.from('groups').update({ active: !group.active }).eq('id', group.id);
+    load();
+  };
+
+  if (loading) return <Spinner />;
+
+  return (
+    <div className="space-y-6">
+      <AdminCard title="Crear nuevo grupo">
+        <div className="flex gap-2">
+          <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nombre del grupo, ej. 'Generación Agosto 2026'" className="flex-1" />
+          <SaveBtn onClick={createGroup} loading={creating} label="Crear grupo" />
+        </div>
+      </AdminCard>
+
+      <AdminCard title={`Grupos (${groups.length})`}>
+        {groups.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">Todavía no hay grupos creados.</p>
+        ) : (
+          <div className="space-y-2">
+            {groups.map(g => (
+              <div key={g.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg border">
+                <div>
+                  <p className="font-medium text-sm">{g.name}</p>
+                  <Badge className={g.active ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700'}>{g.active ? 'Activo' : 'Inactivo'}</Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <select value={g.teacher_id || ''} onChange={e => assignTeacher(g.id, e.target.value)} className={inputCls + ' w-auto'}>
+                    <option value="">Sin profesor asignado</option>
+                    {teachers.map(t => <option key={t.id} value={t.id}>{t.nombre_completo || t.id}</option>)}
+                  </select>
+                  <Button size="sm" variant="outline" onClick={() => toggleActive(g)}>{g.active ? 'Desactivar' : 'Activar'}</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {teachers.length === 0 && (
+          <p className="text-xs text-muted-foreground mt-3">
+            Nota: todavía no hay ningún usuario con rol "profesor". Ve a la sección "Usuarios" y cambia el rol de alguien a "profesor" para poder asignarlo aquí.
+          </p>
+        )}
+      </AdminCard>
+    </div>
+  );
+}
+
+function AuditLogAdmin() {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    supabase.from('audit_log').select('*').order('created_at', { ascending: false }).limit(300)
+      .then(({ data }) => { setLogs(data || []); setLoading(false); });
+  }, []);
+
+  const filtered = logs.filter(l =>
+    (l.action || '').toLowerCase().includes(search.toLowerCase()) ||
+    (l.actor_role || '').toLowerCase().includes(search.toLowerCase()) ||
+    (l.table_name || '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  if (loading) return <Spinner />;
+
+  return (
+    <AdminCard title={`Bitácora de auditoría (últimas ${logs.length})`}>
+      <p className="text-xs text-muted-foreground mb-3">
+        Registro de solo lectura de acciones sensibles (cambios de rol, estatus, calificaciones, etc.) de todos los usuarios, incluidos otros administradores. No se puede editar ni borrar.
+      </p>
+      <div className="relative mb-4">
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por acción, rol o tabla..." className="pl-9" />
+      </div>
+      {filtered.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-4 text-center">Sin registros todavía.</p>
+      ) : (
+        <div className="space-y-2 max-h-[600px] overflow-y-auto">
+          {filtered.map(l => (
+            <div key={l.id} className="p-3 rounded-lg border text-xs">
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-medium">{l.action}</span>
+                <span className="text-muted-foreground">{new Date(l.created_at).toLocaleString('es-MX')}</span>
+              </div>
+              <p className="text-muted-foreground">
+                Tabla: <code>{l.table_name}</code> · Rol: <code>{l.actor_role || 'desconocido'}</code>
+              </p>
+              {(l.old_data || l.new_data) && (
+                <div className="mt-1 grid grid-cols-2 gap-2">
+                  {l.old_data && <pre className="bg-muted rounded p-1.5 overflow-x-auto">{JSON.stringify(l.old_data)}</pre>}
+                  {l.new_data && <pre className="bg-muted rounded p-1.5 overflow-x-auto">{JSON.stringify(l.new_data)}</pre>}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </AdminCard>
   );
 }
 
@@ -1162,15 +1322,17 @@ const NAV = [
   { id: 'socials',      label: 'Redes Sociales',    icon: ExternalLink },
   { id: 'testimonios',  label: 'Testimonios',       icon: Star },
   { id: 'usuarios',     label: 'Usuarios',          icon: Users,       section: 'Gestión' },
+  { id: 'grupos',       label: 'Grupos',            icon: GraduationCap },
   { id: 'prospectos',   label: 'Prospectos',        icon: Users },
   { id: 'cambios',      label: 'Cambios pendientes', icon: ClipboardCheck },
+  { id: 'bitacora',     label: 'Bitácora',          icon: History },
   { id: 'modulos',      label: 'Módulos/Lecciones', icon: BookOpen,    section: 'Educativo' },
   { id: 'eventos',      label: 'Eventos',           icon: Calendar },
   { id: 'recursos',     label: 'Recursos',          icon: Download },
   { id: 'anuncios',     label: 'Anuncios',          icon: Megaphone },
 ];
 
-const TITLES = { dashboard:'Dashboard', cambios:'Cambios pendientes de revisión', 'cms-hero':'Hero', 'cms-header':'Header', 'cms-footer':'Footer', 'cms-benefits':'Beneficios', 'cms-seo':'SEO', socials:'Redes Sociales', testimonios:'Testimonios', usuarios:'Usuarios', prospectos:'Prospectos', modulos:'Módulos y Lecciones', eventos:'Eventos', recursos:'Recursos', anuncios:'Anuncios' };
+const TITLES = { dashboard:'Dashboard', cambios:'Cambios pendientes de revisión', 'cms-hero':'Hero', 'cms-header':'Header', 'cms-footer':'Footer', 'cms-benefits':'Beneficios', 'cms-seo':'SEO', socials:'Redes Sociales', testimonios:'Testimonios', usuarios:'Usuarios', grupos:'Grupos', prospectos:'Prospectos', modulos:'Módulos y Lecciones', eventos:'Eventos', recursos:'Recursos', anuncios:'Anuncios', bitacora:'Bitácora de auditoría' };
 
 export default function AdminPage() {
   const { isAdmin, logout } = useAuth();
@@ -1189,8 +1351,10 @@ export default function AdminPage() {
       case 'socials':      return <SocialsAdmin />;
       case 'testimonios':  return <TestimoniosAdmin />;
       case 'usuarios':     return <UsersAdmin />;
+      case 'grupos':       return <GroupsAdmin />;
       case 'prospectos':   return <ProspectsAdmin />;
       case 'cambios':      return <PendingChangesAdmin />;
+      case 'bitacora':     return <AuditLogAdmin />;
       case 'modulos':      return <ModulesAdmin />;
       case 'eventos':      return <EventsAdmin />;
       case 'recursos':     return <ResourcesAdmin />;

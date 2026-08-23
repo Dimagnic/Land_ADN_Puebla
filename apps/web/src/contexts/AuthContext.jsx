@@ -95,6 +95,7 @@ export const AuthProvider = ({ children }) => {
 
   const isAdmin   = profile?.role === 'admin';
   const isSponsor = profile?.role === 'patrocinador' || isAdmin;
+  const isTeacher = profile?.role === 'profesor' || isAdmin;
 
   return (
     <AuthContext.Provider value={{
@@ -103,6 +104,7 @@ export const AuthProvider = ({ children }) => {
       loading,
       isAdmin,
       isSponsor,
+      isTeacher,
       login,
       logout,
       updateLastLesson,

@@ -18,6 +18,7 @@ import ResourcesPage from './pages/ResourcesPage.jsx';
 import EventsPage from './pages/EventsPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import SponsorPanelPage from './pages/SponsorPanelPage.jsx';
+import TeacherPanelPage from './pages/TeacherPanelPage.jsx';
 import CertificatePage from './pages/CertificatePage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
 import { Toaster } from 'sonner';
@@ -48,6 +49,7 @@ function AppContent() {
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/certificate" element={<ProtectedRoute><CertificatePage /></ProtectedRoute>} />
           <Route path="/sponsor-panel" element={<ProtectedRoute sponsorOnly><SponsorPanelPage /></ProtectedRoute>} />
+          <Route path="/teacher-panel" element={<ProtectedRoute teacherOnly><TeacherPanelPage /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute adminOnly><AdminPage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
