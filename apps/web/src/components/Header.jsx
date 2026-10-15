@@ -13,7 +13,7 @@ const Header = ({ cmsData }) => {
   const { user, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
 
-  const logoUrl = cmsData?.logo_url || 'https://horizons-cdn.hostinger.com/1060bfed-4778-45d1-8346-df361739fa1c/5aa1b7bbf925833bae29155d3c3acdb9.png';
+  const logoUrl = cmsData?.logo_url || 'https://riqlkzzqkkiytoonnysj.supabase.co/storage/v1/object/public/public-assets/Logo_ADN.png';
   const navLinks = cmsData?.nav_links || [
     { label: 'Inicio', id: 'hero' },
     { label: 'Beneficios', id: 'benefits' },

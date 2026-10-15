@@ -158,7 +158,7 @@ const ResetPasswordPage = () => {
           <div className="text-center mb-8">
             <Link to="/">
               <img
-                src="https://horizons-cdn.hostinger.com/1060bfed-4778-45d1-8346-df361739fa1c/cc2ce7bfd135fd33083b232d71ee36cb.png"
+                src="https://riqlkzzqkkiytoonnysj.supabase.co/storage/v1/object/public/public-assets/Logo_ADN.png"
                 alt="ADN Puebla"
                 className="w-[150px] mx-auto mb-6 object-contain"
               />

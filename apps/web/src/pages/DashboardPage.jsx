@@ -58,7 +58,7 @@ const DashboardPage = () => {
           <div className="flex items-center justify-between h-14 md:h-16">
             <div className="flex items-center gap-4">
               <Link to="/dashboard">
-                <img src="https://horizons-cdn.hostinger.com/1060bfed-4778-45d1-8346-df361739fa1c/cc2ce7bfd135fd33083b232d71ee36cb.png"
+                <img src="https://riqlkzzqkkiytoonnysj.supabase.co/storage/v1/object/public/public-assets/Logo_ADN.png"
                   alt="ADN Puebla" className="h-8 md:h-10 object-contain brightness-0 invert" />
               </Link>
               <nav className="hidden md:flex items-center gap-1">

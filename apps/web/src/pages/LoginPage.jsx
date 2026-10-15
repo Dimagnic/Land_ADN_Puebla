@@ -59,7 +59,7 @@ const LoginPage = () => {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-accent/10 px-4 py-12">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <Link to="/"><img src="https://horizons-cdn.hostinger.com/1060bfed-4778-45d1-8346-df361739fa1c/cc2ce7bfd135fd33083b232d71ee36cb.png" alt="ADN Puebla" className="w-[150px] mx-auto mb-6 object-contain" /></Link>
+            <Link to="/"><img src="https://riqlkzzqkkiytoonnysj.supabase.co/storage/v1/object/public/public-assets/Logo_ADN.png" alt="ADN Puebla" className="w-[150px] mx-auto mb-6 object-contain" /></Link>
           </div>
           <Card className="shadow-lg">
             <CardHeader>
@@ -112,7 +112,7 @@ const LoginPage = () => {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-accent/10 px-4 py-12">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <Link to="/"><img src="https://horizons-cdn.hostinger.com/1060bfed-4778-45d1-8346-df361739fa1c/cc2ce7bfd135fd33083b232d71ee36cb.png" alt="ADN Puebla" className="w-[150px] sm:w-[200px] mx-auto mb-6 object-contain" /></Link>
+            <Link to="/"><img src="https://riqlkzzqkkiytoonnysj.supabase.co/storage/v1/object/public/public-assets/Logo_ADN.png" alt="ADN Puebla" className="w-[150px] sm:w-[200px] mx-auto mb-6 object-contain" /></Link>
             <h1 className="text-3xl font-bold mb-2" style={{ letterSpacing: '-0.02em' }}>ADN Puebla</h1>
             <p className="text-lg text-muted-foreground">Tu camino hacia la libertad financiera</p>
           </div>

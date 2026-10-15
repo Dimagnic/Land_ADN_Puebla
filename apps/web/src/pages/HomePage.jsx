@@ -23,7 +23,7 @@ const DEFAULT_HERO = {
   btn_primary: 'Solicitar Información',
   btn_secondary: 'Contactar por WhatsApp',
   bg_image: 'https://images.unsplash.com/photo-1695173583133-c19731e2df44?q=80&w=2070&auto=format&fit=crop',
-  logo_url: 'https://horizons-cdn.hostinger.com/1060bfed-4778-45d1-8346-df361739fa1c/5aa1b7bbf925833bae29155d3c3acdb9.png',
+  logo_url: 'https://riqlkzzqkkiytoonnysj.supabase.co/storage/v1/object/public/public-assets/Logo_ADN.png',
 };
 const DEFAULT_HEADER = null;
 const DEFAULT_BENEFITS = {
